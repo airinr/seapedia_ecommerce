@@ -6,8 +6,20 @@ import { RoleContext } from "./RoleContextBase"; // Import dari file base
 export const RoleProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [ownedRoles, setOwnedRoles] = useState([]);
-  const [activeRole, setActiveRole] = useState(null);
+  const [activeRole, setActiveRole] = useState(
+    localStorage.getItem("seapedia_active_role") || null,
+  );
   const [loading, setLoading] = useState(true);
+
+  // Helper untuk set role aktif sekaligus simpan ke localStorage
+  const handleSetActiveRole = (role) => {
+    setActiveRole(role);
+    if (role) {
+      localStorage.setItem("seapedia_active_role", role);
+    } else {
+      localStorage.removeItem("seapedia_active_role");
+    }
+  };
 
   async function fetchUserRoles(userId) {
     try {
@@ -21,16 +33,30 @@ export const RoleProvider = ({ children }) => {
 
       let roles = data.map((r) => r.role);
 
-      // Pastikan "Buyer" selalu ada sebagai role dasar
-      if (!roles.includes("Buyer")) {
-        roles = ["Buyer", ...roles];
+      // 💡 LOGIKA EKSKLUSIVITAS:
+      // Jika user punya role spesialis (Seller, Driver, atau Admin), 
+      // maka role "Buyer" akan dihilangkan/dinonaktifkan.
+      const hasSpecializedRole = roles.some((r) =>
+        ["Seller", "Driver", "Admin"].includes(r),
+      );
+
+      if (hasSpecializedRole) {
+        // Hapus "Buyer" dari daftar jika user sudah naik tingkat
+        roles = roles.filter((r) => r !== "Buyer");
+      } else {
+        // Jika belum punya role apa-apa, baru berikan role "Buyer" sebagai default
+        if (roles.length === 0) {
+          roles = ["Buyer"];
+        }
       }
 
       setOwnedRoles(roles);
 
-      // Jika activeRole belum diset, default ke "Buyer"
-      if (!activeRole) {
-        setActiveRole("Buyer");
+      // Validasi activeRole: Jika role yang tersimpan di localStorage sudah tidak dimiliki 
+      // (misal: "Buyer" yang baru saja di-upgrade ke "Seller"), maka reset ke role pertama yang tersedia.
+      const savedRole = localStorage.getItem("seapedia_active_role");
+      if (!savedRole || !roles.includes(savedRole)) {
+        handleSetActiveRole(roles[0] || "Buyer");
       }
     } catch (err) {
       console.error("Gagal mengambil role user:", err.message);
@@ -58,7 +84,7 @@ export const RoleProvider = ({ children }) => {
       } else {
         setUser(null);
         setOwnedRoles([]);
-        setActiveRole(null);
+        handleSetActiveRole(null); // Gunakan helper untuk hapus storage
         setLoading(false);
       }
     });
@@ -68,7 +94,13 @@ export const RoleProvider = ({ children }) => {
 
   return (
     <RoleContext.Provider
-      value={{ user, ownedRoles, activeRole, setActiveRole, loading }}
+      value={{
+        user,
+        ownedRoles,
+        activeRole,
+        setActiveRole: handleSetActiveRole, // Inject helper persistence
+        loading,
+      }}
     >
       {!loading && children}
     </RoleContext.Provider>
