@@ -122,6 +122,17 @@ export default function UserSettings() {
     }
   };
 
+  const handleLogout = async () => {
+    if (!confirm("Apakah Anda yakin ingin keluar?")) return;
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      navigate("/");
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
   // ADAPTIVE SIDEBAR MENU BERDASARKAN ACTIVE ROLE
   const getSidebarMenus = () => {
     if (activeRole === "Seller") {
@@ -133,7 +144,7 @@ export default function UserSettings() {
     }
     return [
       { name: "Dashboard Utama", icon: "📊", path: "/" },
-      { name: "My Orders", icon: "📝", path: "#" },
+      { name: "My Orders", icon: "📝", path: "/orders" },
       { name: "Wishlist", icon: "❤️", path: "#" },
       { name: "My Reviews", icon: "⭐", path: "#" },
     ];
@@ -183,7 +194,10 @@ export default function UserSettings() {
           <div className="flex items-center gap-2 cursor-pointer hover:text-[#0D241F]">
             <span>❓</span> Help Center
           </div>
-          <div className="flex items-center gap-2 cursor-pointer hover:text-red-600 transition">
+          <div
+            onClick={handleLogout}
+            className="flex items-center gap-2 cursor-pointer hover:text-red-600 transition"
+          >
             <span>➔</span> Logout
           </div>
         </div>

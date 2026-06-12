@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useRole } from "../hooks/useRole";
 import { useNavigate } from "react-router-dom";
+import { useCart } from "../context/CartContext"; // 🚀 1. IMPORT HOOK KERANJANG
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const { user, ownedRoles, activeRole, setActiveRole } = useRole();
+  const { addToCart, getCartCount } = useCart(); // 🚀 2. UNBOX FUNGSI AKSES BELANJA
   const [products, setProducts] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +20,6 @@ export default function LandingPage() {
       try {
         setLoading(true);
 
-        // 1. Ambil data produk asli dari Supabase
         const { data: productData, error: productError } = await supabase
           .from("products")
           .select("*")
@@ -26,7 +27,6 @@ export default function LandingPage() {
 
         if (productError) throw productError;
 
-        // 2. Ambil data ulasan aplikasi publik dari Supabase (Level 1)
         const { data: reviewData, error: reviewError } = await supabase
           .from("app_reviews")
           .select("*")
@@ -34,7 +34,6 @@ export default function LandingPage() {
 
         if (reviewError) throw reviewError;
 
-        // --- Pengkondisian State Produk ---
         if (productData && productData.length > 0) {
           setProducts(productData);
         } else {
@@ -45,8 +44,9 @@ export default function LandingPage() {
               price: 1320000,
               stock: 12,
               description: "Organic cotton, fair trade certified.",
-              image_url:
+              image_url: [
                 "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500",
+              ],
             },
             {
               id: 2,
@@ -55,8 +55,9 @@ export default function LandingPage() {
               stock: 5,
               description:
                 "A perfect balance of exhilarating high-fidelity audio.",
-              image_url:
+              image_url: [
                 "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=500",
+              ],
             },
             {
               id: 3,
@@ -64,8 +65,9 @@ export default function LandingPage() {
               price: 4335000,
               stock: 8,
               description: "Relax with noise isolation extra-bass black.",
-              image_url:
+              image_url: [
                 "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500",
+              ],
             },
             {
               id: 4,
@@ -73,13 +75,13 @@ export default function LandingPage() {
               price: 585000,
               stock: 25,
               description: "Wired stereo headsets with mic control.",
-              image_url:
+              image_url: [
                 "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=500",
+              ],
             },
           ]);
         }
 
-        // --- Pengkondisian State Review ---
         if (reviewData && reviewData.length > 0) {
           setReviews(reviewData);
         } else {
@@ -112,8 +114,6 @@ export default function LandingPage() {
   // 💡 EFFECT 2: RE-TRIGGER OTOMATIS PEMASANGAN ROLE SEBAGAI BUYER
   // =========================================================================
   useEffect(() => {
-    // Jika user sudah masuk, data role dari supabase sudah ter-load (length === 1),
-    // dan activeRole masih kosong, langsung paksa isi dengan peran pertamanya (Buyer).
     if (user && ownedRoles && ownedRoles.length === 1 && !activeRole) {
       setActiveRole(ownedRoles[0]);
     }
@@ -121,9 +121,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] text-[#23263B] font-sans antialiased">
-      {/* =========================================================================
-          1. ANNOUNCEMENT BAR (PENGGANTI DISKON - STRUKTUR BANNER ATAS)
-          ========================================================================= */}
+      {/* 1. ANNOUNCEMENT BAR */}
       <div className="bg-[#0D241F] text-[#F3FDF5] text-xs py-2 px-4 border-b border-emerald-950">
         <div className="container mx-auto flex justify-between items-center overflow-hidden">
           <div className="animate-marquee flex gap-8">
@@ -131,23 +129,16 @@ export default function LandingPage() {
               📢 <strong>Pengumuman Ekosistem SEAPEDIA:</strong> Fitur simulasi
               otomatis SLA Next-Day diaktifkan untuk pengujian Level 6.
             </span>
-            <span>
-              🚀 Selamat datang di kompetisi Software Engineering Academy
-              COMPFEST 18.
-            </span>
           </div>
           <div className="hidden md:block text-[11px] font-mono opacity-80 shrink-0">
-            System Time: 2026.06.11
+            System Time: 2026.06.12
           </div>
         </div>
       </div>
 
-      {/* =========================================================================
-          2. HEADER / NAVBAR
-          ========================================================================= */}
+      {/* 2. HEADER / NAVBAR */}
       <header className="bg-white border-b border-slate-100 sticky top-0 z-50 shadow-xs">
         <div className="container mx-auto px-4 lg:px-8 py-4 flex justify-between items-center gap-4">
-          {/* Logo & Menu Kiri */}
           <div className="flex items-center gap-8">
             <a
               href="/"
@@ -169,7 +160,6 @@ export default function LandingPage() {
             </nav>
           </div>
 
-          {/* Kolom Pencarian Tengah */}
           <div className="flex-1 max-w-md relative hidden md:block">
             <input
               type="text"
@@ -181,11 +171,9 @@ export default function LandingPage() {
             </span>
           </div>
 
-          {/* Navigasi Sesi / Akun Kanan */}
           <div className="flex items-center gap-6 text-sm font-semibold text-[#23263B]">
             {user ? (
               <div className="flex items-center gap-3">
-                {/* Menampilkan Nama & Role Secara Dinamis */}
                 <div className="text-right hidden sm:block">
                   <p className="text-xs font-black text-[#0D241F]">
                     {user.user_metadata?.full_name || "User SEAPEDIA"}
@@ -195,9 +183,8 @@ export default function LandingPage() {
                   </p>
                 </div>
 
-                {/* Avatar Bulat Berfungsi Sebagai Tombol Navigasi Settings */}
                 <button
-                  onClick={() => navigate("/settings")} // ✅ Atribut onClick dipindahkan ke dalam tag pembuka
+                  onClick={() => navigate("/settings")}
                   className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center font-bold text-xs shadow-xs hover:bg-emerald-100 transition cursor-pointer"
                 >
                   {user.user_metadata?.full_name?.charAt(0).toUpperCase() ||
@@ -218,22 +205,34 @@ export default function LandingPage() {
               </div>
             )}
 
-            {/* Ikon Keranjang Belanja */}
-            <div className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-600 relative">
+            {/* Tombol Pesanan Saya (Muncul jika user login) */}
+            {user && (
+              <div
+                onClick={() => navigate("/orders")}
+                className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-600 relative"
+              >
+                <span className="text-lg">📦</span>
+                <span className="text-xs hidden sm:inline font-bold">Pesanan Saya</span>
+              </div>
+            )}
+
+            {/* 🚀 3. SINKRONISASI BADGE JUMLAH KERANJANG REAL-TIME */}
+            <div
+              onClick={() => navigate("/cart")}
+              className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-600 relative"
+            >
               <span className="text-lg">🛒</span>
               <span className="text-xs hidden sm:inline">Cart</span>
               <span className="absolute -top-1.5 left-3 bg-emerald-600 text-white font-mono text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-                0
+                {getCartCount()}
               </span>
             </div>
           </div>
         </div>
       </header>
 
-      {/* =========================================================================
-          3. HERO HERO BANNER
-          ========================================================================= */}
-      <section className="container mx-auto px-4 lg:px-8 pt-6">
+      {/* 3. HERO BANNER */}
+      {/* <section className="container mx-auto px-4 lg:px-8 pt-6">
         <div className="w-full bg-[#EBF4F1] rounded-[24px] overflow-hidden relative min-h-[260px] md:min-h-[420px] flex items-center shadow-sm">
           <div className="p-8 md:p-16 max-w-md md:max-w-xl z-10 relative">
             <h1 className="text-3xl md:text-5xl font-black text-[#0D241F] tracking-tight leading-none">
@@ -255,46 +254,21 @@ export default function LandingPage() {
             <div className="absolute inset-0 bg-gradient-to-r from-[#EBF4F1] via-[#EBF4F1]/70 to-transparent"></div>
           </div>
         </div>
-      </section>
+      </section> */}
 
-      {/* =========================================================================
-          4. BARISAN FILTER TOMBOL
-          ========================================================================= */}
+      {/* 4. BARISAN FILTER TOMBOL (REDUCED) */}
       <section className="container mx-auto px-4 lg:px-8 pt-8 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2.5 text-xs font-semibold">
-          <button className="bg-[#F5F6F6] hover:bg-slate-200 px-4 py-2 rounded-full border border-slate-100">
-            Headphone Type ▼
+          <button className="bg-[#EBF4F1] text-emerald-800 px-6 py-2.5 rounded-full border border-emerald-100 font-bold">
+            All Products 📦
           </button>
-          <button className="bg-[#F5F6F6] hover:bg-slate-200 px-4 py-2 rounded-full border border-slate-100">
-            Price ▼
-          </button>
-          <button className="bg-[#F5F6F6] hover:bg-slate-200 px-4 py-2 rounded-full border border-slate-100">
-            Review ▼
-          </button>
-          <button className="bg-[#F5F6F6] hover:bg-slate-200 px-4 py-2 rounded-full border border-slate-100">
-            Color ▼
-          </button>
-          <button className="bg-[#F5F6F6] hover:bg-slate-200 px-4 py-2 rounded-full border border-slate-100">
-            Material ▼
-          </button>
-          <button className="bg-[#F5F6F6] hover:bg-slate-200 px-4 py-2 rounded-full border border-slate-100">
-            Other ▼
-          </button>
-          <button className="bg-[#EBF4F1] text-emerald-800 px-4 py-2 rounded-full border border-emerald-100 font-bold">
-            All Filters 🎛️
-          </button>
-        </div>
-        <div className="text-xs font-semibold bg-[#F5F6F6] px-4 py-2 rounded-full border border-slate-100">
-          Sort by: <span className="text-slate-900 font-bold">Newest ▼</span>
         </div>
       </section>
 
-      {/* =========================================================================
-          5. PRODUCT GRID CATALOGUE
-          ========================================================================= */}
+      {/* 5. PRODUCT GRID CATALOGUE */}
       <section className="container mx-auto px-4 lg:px-8 py-8">
         <h2 className="text-xl md:text-2xl font-black text-[#0D241F] mb-6">
-          Headphones For You!
+          Happy Shopping!
         </h2>
 
         {loading ? (
@@ -303,65 +277,102 @@ export default function LandingPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className="flex flex-col bg-transparent group relative"
-              >
-                <div className="w-full h-64 bg-[#F5F6F6] rounded-[16px] overflow-hidden relative flex items-center justify-center p-4">
-                  <img
-                    src={
-                      product.image_url ||
-                      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500"
-                    }
-                    alt={product.product_name}
-                    className="max-h-full max-w-full object-contain group-hover:scale-105 transition duration-300"
-                  />
-                  <button className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400 hover:text-red-500 transition text-sm">
-                    🤍
-                  </button>
-                </div>
+            {products.map((product) => {
+              const hasImages =
+                Array.isArray(product.image_url) &&
+                product.image_url.length > 0;
+              const displayImage = hasImages
+                ? product.image_url[0]
+                : typeof product.image_url === "string"
+                  ? product.image_url
+                  : null;
 
-                <div className="mt-3 flex justify-between items-start gap-2">
-                  <h3 className="font-extrabold text-sm text-[#23263B] line-clamp-1 group-hover:text-emerald-700 transition cursor-pointer flex-1">
-                    {product.product_name}
-                  </h3>
-                  <span className="font-black text-sm text-[#23263B] shrink-0 font-mono">
-                    {new Intl.NumberFormat("id-ID", {
-                      style: "currency",
-                      currency: "IDR",
-                      maximumFractionDigits: 0,
-                    }).format(product.price)}
-                  </span>
-                </div>
+              return (
+                <div
+                  key={product.id}
+                  className="flex flex-col bg-transparent group relative cursor-pointer"
+                  onClick={() => navigate(`/product/${product.id}`)}
+                >
+                  <div className="w-full h-64 bg-[#F5F6F6] rounded-[16px] overflow-hidden relative flex items-center justify-center p-4">
+                    <img
+                      src={
+                        displayImage ||
+                        "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500"
+                      }
+                      alt={product.product_name}
+                      className="max-h-full max-w-full object-contain group-hover:scale-105 transition duration-300"
+                    />
 
-                <p className="text-slate-400 text-[11px] line-clamp-2 mt-1 leading-normal">
-                  {product.description ||
-                    "No description provided for this product catalogue entry."}
-                </p>
+                    {hasImages && product.image_url.length > 1 && (
+                      <span className="absolute bottom-3 left-3 bg-[#0D241F]/80 text-white text-[9px] px-2 py-0.5 rounded-md font-mono backdrop-blur-xs">
+                        +{product.image_url.length - 1} Photos
+                      </span>
+                    )}
 
-                <div className="flex items-center gap-1 text-amber-400 text-xs mt-1.5">
-                  {"★".repeat(5)}
-                  <span className="text-slate-400 text-[10px] ml-1 font-semibold">
-                    (121)
-                  </span>
-                </div>
+                    <button 
+                      onClick={(e) => e.stopPropagation()} 
+                      className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400 hover:text-red-500 transition text-sm border-none cursor-pointer"
+                    >
+                      🤍
+                    </button>
+                  </div>
 
-                <div className="mt-3">
-                  <button className="w-full sm:w-auto border border-[#23263B] hover:bg-[#0D241F] hover:text-white text-[#23263B] font-bold text-xs px-4 py-2 rounded-full transition shadow-sm">
-                    Add to Cart
-                  </button>
+                  <div className="mt-3 flex justify-between items-start gap-2">
+                    <h3 className="font-extrabold text-sm text-[#23263B] line-clamp-1 group-hover:text-emerald-700 transition flex-1">
+                      {product.product_name}
+                    </h3>
+                    <span className="font-black text-sm text-[#23263B] shrink-0 font-mono">
+                      {new Intl.NumberFormat("id-ID", {
+                        style: "currency",
+                        currency: "IDR",
+                        maximumFractionDigits: 0,
+                      }).format(product.price)}
+                    </span>
+                  </div>
+
+                  <p className="text-slate-400 text-[11px] line-clamp-2 mt-1 leading-normal">
+                    {product.description ||
+                      "No description provided for this product catalogue entry."}
+                  </p>
+
+                  <div className="flex items-center gap-1 text-amber-400 text-xs mt-1.5">
+                    {"★".repeat(5)}
+                    <span className="text-slate-400 text-[10px] ml-1 font-semibold">
+                      (121)
+                    </span>
+                  </div>
+
+                  {/* 🚀 4. HUBUNGKAN TOMBOL ADD TO CART & BELI SEKARANG */}
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToCart(product);
+                      }}
+                      className="flex-1 border border-[#0D241F] hover:bg-[#0D241F] hover:text-white text-[#0D241F] font-bold text-[10px] px-3 py-2 rounded-full transition shadow-sm bg-transparent cursor-pointer"
+                    >
+                      Add to Cart
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToCart(product, true);
+                        navigate("/cart");
+                      }}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-3 py-2 rounded-full transition shadow-md border-none cursor-pointer"
+                    >
+                      Beli Sekarang
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
 
-      {/* =========================================================================
-          6. POPULAR CATEGORIES SECTION
-          ========================================================================= */}
-      <section className="container mx-auto px-4 lg:px-8 py-8 border-t border-slate-100">
+      {/* 6. POPULAR CATEGORIES SECTION */}
+      {/* <section className="container mx-auto px-4 lg:px-8 py-8 border-t border-slate-100">
         <h2 className="text-xl md:text-2xl font-black text-[#0D241F] mb-6">
           Popular Categories
         </h2>
@@ -384,11 +395,9 @@ export default function LandingPage() {
             </div>
           ))}
         </div>
-      </section>
+      </section> */}
 
-      {/* =========================================================================
-          7. PUBLIC APPLICATION REVIEWS
-          ========================================================================= */}
+      {/* 7. PUBLIC APPLICATION REVIEWS */}
       <section className="container mx-auto px-4 lg:px-8 py-8 border-t border-slate-100">
         <h2 className="text-xl md:text-2xl font-black text-[#0D241F] mb-6">
           Application Feedback
@@ -415,9 +424,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* =========================================================================
-          8. FOOTER MULTI-KOLOM
-          ========================================================================= */}
+      {/* 8. FOOTER */}
       <footer className="bg-white border-t border-slate-200 pt-12 pb-6 mt-12">
         <div className="container mx-auto px-4 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8 text-xs text-slate-500">
           <div className="md:pr-6">
@@ -428,64 +435,22 @@ export default function LandingPage() {
               Experience a frictionless, high-end retail environment with the
               world's leading marketplace and lifestyle branch.
             </p>
-            <div className="flex gap-3 text-sm mt-4 text-slate-400">
-              <span className="cursor-pointer hover:text-emerald-600">🌐</span>
-              <span className="cursor-pointer hover:text-emerald-600">📷</span>
-              <span className="cursor-pointer hover:text-emerald-600">📞</span>
+          </div>
+          {["Department", "About Us", "Help"].map((title, idx) => (
+            <div key={idx}>
+              <h4 className="font-black text-[#23263B] mb-3 text-xs uppercase tracking-wider">
+                {title}
+              </h4>
+              <ul className="space-y-2 font-medium">
+                <li className="hover:text-emerald-600 cursor-pointer">
+                  Sample Item Link
+                </li>
+                <li className="hover:text-emerald-600 cursor-pointer">
+                  Support Context
+                </li>
+              </ul>
             </div>
-          </div>
-
-          <div>
-            <h4 className="font-black text-[#23263B] mb-3 text-xs uppercase tracking-wider">
-              Department
-            </h4>
-            <ul className="space-y-2 font-medium">
-              <li className="hover:text-emerald-600 cursor-pointer">Fashion</li>
-              <li className="hover:text-emerald-600 cursor-pointer">
-                Electronics
-              </li>
-              <li className="hover:text-emerald-600 cursor-pointer">
-                Home & Living
-              </li>
-              <li className="hover:text-emerald-600 cursor-pointer">Beauty</li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-black text-[#23263B] mb-3 text-xs uppercase tracking-wider">
-              About Us
-            </h4>
-            <ul className="space-y-2 font-medium">
-              <li className="hover:text-emerald-600 cursor-pointer">
-                News & Blog
-              </li>
-              <li className="hover:text-emerald-600 cursor-pointer">Careers</li>
-              <li className="hover:text-emerald-600 cursor-pointer">
-                Sustainability
-              </li>
-              <li className="hover:text-emerald-600 cursor-pointer">
-                Partnerships
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-black text-[#23263B] mb-3 text-xs uppercase tracking-wider">
-              Help
-            </h4>
-            <ul className="space-y-2 font-medium">
-              <li className="hover:text-emerald-600 cursor-pointer">
-                Shopcart Help
-              </li>
-              <li className="hover:text-emerald-600 cursor-pointer">Returns</li>
-              <li className="hover:text-emerald-600 cursor-pointer">
-                Track Order
-              </li>
-              <li className="hover:text-emerald-600 cursor-pointer">
-                Contact Us
-              </li>
-            </ul>
-          </div>
+          ))}
         </div>
 
         <div className="container mx-auto px-4 lg:px-8 border-t border-slate-100 mt-8 pt-4 flex flex-col sm:flex-row justify-between items-center gap-2 text-[10px] text-slate-400 font-mono">
@@ -493,15 +458,13 @@ export default function LandingPage() {
             &copy; {new Date().getFullYear()} SEAPEDIA Inc. All rights reserved.
           </span>
           <div className="flex gap-4 font-sans font-semibold">
-            <span className="cursor-pointer hover:underline">
-              Privacy Policy
-            </span>
-            <span className="cursor-pointer hover:underline">
-              Terms of Service
-            </span>
-            <span className="cursor-pointer hover:underline">
-              Shipping Info
-            </span>
+            {["Privacy Policy", "Terms of Service", "Shipping Info"].map(
+              (item, idx) => (
+                <span key={idx} className="cursor-pointer hover:underline">
+                  {item}
+                </span>
+              ),
+            )}
           </div>
         </div>
       </footer>

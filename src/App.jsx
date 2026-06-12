@@ -11,6 +11,9 @@ import RoleSelection from "./pages/RoleSelection";
 import UserSettings from "./pages/UserSettings";
 import SellerRegistration from "./pages/SellerRegistration";
 import SellerDashboard from "./pages/SellerPage/SellerDashboard";
+import CartPage from "./pages/BuyerPage/CartPage";
+import ProductDetailPage from "./pages/BuyerPage/ProductDetailPage";
+import BuyerOrdersPage from "./pages/BuyerPage/BuyerOrdersPage"; // 🚀 Import BuyerOrdersPage
 
 // Dummy placeholder untuk halaman login & register sebelum kamu buat kodenya
 const LoginPlaceholder = () => (
@@ -33,6 +36,9 @@ export default function App() {
       <Routes>
         {/* Jalur Utama: Landing Page SEAPEDIA */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/product/:id" element={<ProductDetailPage />} />
+        <Route path="/orders" element={<BuyerOrdersPage />} /> {/* 🚀 Rute Orders */}
 
         {/* Jalur Auth (Placeholder awal) */}
         <Route path="/login" element={<LoginPlaceholder />} />

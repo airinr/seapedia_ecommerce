@@ -16,14 +16,14 @@ export default function RoleSelection() {
 
       // Jika user hanya punya 1 role, activeRole otomatis terisi di Context, langsung arahkan ke dashboard
       if (ownedRoles.length === 1 && activeRole) {
-        navigate("/dashboard");
+        navigate("/");
       }
     }
   }, [user, ownedRoles, activeRole, loading, navigate]);
 
   const handleSelectRole = (role) => {
     setActiveRole(role);
-    navigate("/dashboard"); // Lempar ke shell dashboard utama
+    navigate("/"); // Lempar ke shell dashboard utama
   };
 
   if (loading) {
