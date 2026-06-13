@@ -1,444 +1,283 @@
-import { useState, useCallback, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useState, useEffect } from "react";
+import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
-import { useRole } from "../../hooks/useRole";
-import ProductCatalog from "./ProductCatalog";
 
 export default function SellerDashboard() {
-  const navigate = useNavigate();
-  const { user, loading: roleLoading } = useRole();
-  const [store, setStore] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [revenue, setRevenue] = useState(0);
+  const { store, products, orders, revenue, fetchSellerData } =
+    useOutletContext();
+  const [actionLoading, setActionLoading] = useState(false);
 
-  // State Form Toko
   const [storeName, setStoreName] = useState("");
   const [storeDesc, setStoreDesc] = useState("");
   const [storeAddress, setStoreAddress] = useState("");
 
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem("sellerActiveTab") || "Dashboard";
-  });
-
   useEffect(() => {
-    localStorage.setItem("sellerActiveTab", activeTab);
-  }, [activeTab]);
-
-  // =========================================================================
-  // 💡 AMBIL DATA TOKO, PRODUK, PESANAN, DAN PENDAPATAN
-  // =========================================================================
-  const fetchSellerData = useCallback(async () => {
-    if (roleLoading) return;
-
-    if (!user?.id) {
-      setLoading(false);
-      return;
+    if (store) {
+      setStoreName(store.store_name || "");
+      setStoreDesc(store.description || "");
+      setStoreAddress(store.address || "");
     }
+  }, [store]);
 
-    try {
-      setLoading(true);
+  const parseImageUrl = (rawUrlData) => {
+    const fallbackPlaceholder =
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=150";
 
-      const { data: storeData, error: storeError } = await supabase
-        .from("stores")
-        .select("*")
-        .eq("owner_id", user.id)
-        .maybeSingle();
+    if (!rawUrlData) return fallbackPlaceholder;
 
-      if (storeError) throw storeError;
+    let imagePath = "";
 
-      if (storeData) {
-        setStore(storeData);
-        setStoreName(storeData.store_name);
-        setStoreDesc(storeData.description || "");
-        setStoreAddress(storeData.address || "");
-
-        const { data: prodData, error: prodError } = await supabase
-          .from("products")
-          .select("*")
-          .eq("store_id", storeData.id)
-          .order("created_at", { ascending: false });
-
-        if (prodError) throw prodError;
-        setProducts(prodData || []);
-
-        const { data: orderData, error: orderError } = await supabase
-          .from("orders")
-          .select("*")
-          .eq("store_id", storeData.id)
-          .order("created_at", { ascending: false });
-
-        if (orderError) throw orderError;
-        setOrders(orderData || []);
-
-        const totalRevenue = (orderData || [])
-          .filter((ord) => ord.status === "Selesai")
-          .reduce((sum, ord) => sum + Number(ord.total_price), 0);
-        setRevenue(totalRevenue);
+    if (Array.isArray(rawUrlData)) {
+      imagePath = rawUrlData.length > 0 ? rawUrlData[0] : "";
+    } else if (typeof rawUrlData === "string") {
+      const trimmed = rawUrlData.trim();
+      if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+        try {
+          const parsedArray = JSON.parse(trimmed);
+          if (Array.isArray(parsedArray) && parsedArray.length > 0) {
+            imagePath = parsedArray[0];
+          }
+          // eslint-disable-next-line no-unused-vars
+        } catch (e) {
+          imagePath = trimmed;
+        }
+      } else {
+        imagePath = trimmed;
       }
-    } catch (err) {
-      console.error("Gagal memuat data dasbor seller:", err.message);
-    } finally {
-      setLoading(false);
     }
-  }, [user, roleLoading]);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchSellerData();
-  }, [fetchSellerData]);
+    const cleanUrl = String(imagePath)
+      // eslint-disable-next-line no-useless-escape
+      .replace(/[\[\]{}""']/g, "")
+      .trim();
 
+    return cleanUrl || fallbackPlaceholder;
+  };
+
+  // 🚀 PERBAIKAN UTAMA: Integrasi mutasi pembaruan profil toko langsung ke database Supabase
   const handleUpdateStore = async (e) => {
     e.preventDefault();
     if (!store?.id) return;
 
     try {
       setActionLoading(true);
+
       const { error } = await supabase
         .from("stores")
         .update({
-          store_name: storeName,
-          description: storeDesc,
-          address: storeAddress,
+          store_name: storeName.trim(),
+          description: storeDesc.trim(),
+          address: storeAddress.trim(),
         })
         .eq("id", store.id);
 
       if (error) throw error;
-      alert("Profil toko berhasil diperbarui!");
-      fetchSellerData();
+
+      alert("Profil toko berhasil diperbarui di server Supabase!");
+      fetchSellerData(); // Memicu re-fetch data context induk agar UI sinkron serentak
     } catch (err) {
-      alert(err.message);
+      alert(`Gagal memperbarui informasi toko: ${err.message}`);
     } finally {
       setActionLoading(false);
     }
   };
-
-  const handleUpdateOrderStatus = async (orderId) => {
-    try {
-      setActionLoading(true);
-      const { error } = await supabase
-        .from("orders")
-        .update({ status: "Menunggu Pengirim" })
-        .eq("id", orderId)
-        .eq("status", "Sedang Dikemas");
-
-      if (error) throw error;
-      alert("Status pesanan diperbarui!");
-      fetchSellerData();
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    if (!confirm("Apakah Anda yakin ingin keluar?")) return;
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      navigate("/");
-    } catch (err) {
-      alert(err.message);
-    }
-  };
-
-  if (loading || roleLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0D241F]"></div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex text-[#23263B] font-sans antialiased">
-      {/* SIDEBAR PANEL */}
-      <aside className="w-64 bg-white border-r border-slate-200 p-6 flex flex-col justify-between hidden md:flex shrink-0 h-screen sticky top-0">
-        <div className="space-y-7">
-          <div>
-            <h2 className="text-sm font-black text-[#0D241F] tracking-wider uppercase">
-              🏪 Seller Panel
-            </h2>
-            <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-              Store & Product System
-            </p>
-          </div>
-
-          <nav className="space-y-1">
-            {[
-              { name: "Dashboard", icon: "📊" },
-              { name: "Katalog Produk", icon: "📦" },
-              { name: "Pesanan Masuk", icon: "📥" },
-            ].map((menu, i) => {
-              const isSelected = activeTab === menu.name;
-              return (
-                <button
-                  key={i}
-                  onClick={() => setActiveTab(menu.name)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-xl transition text-left cursor-pointer border-none bg-transparent ${
-                    isSelected
-                      ? "bg-[#0D241F] text-white shadow-sm"
-                      : "text-slate-500 hover:bg-slate-50"
-                  }`}
-                >
-                  <span>{menu.icon}</span> {menu.name}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => navigate("/settings")}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-500 rounded-xl hover:bg-slate-50 transition text-left cursor-pointer border-none bg-transparent"
-            >
-              <span>⚙️</span> Back to Settings
-            </button>
-          </nav>
+    <div className="animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-xl font-extrabold text-[#0D241F] tracking-tight">
+            {store?.store_name || "Merchant"} Control Centre
+          </h1>
+          <p className="text-slate-400 text-xs mt-0.5">
+            Kelola katalog produk, monitor pergerakan inventaris, dan validasi
+            transaksi masuk pembeli.
+          </p>
         </div>
+      </div>
 
-        <div className="pt-6 border-t border-slate-100">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-red-500 rounded-xl hover:bg-red-50 transition text-left cursor-pointer border-none bg-transparent"
-          >
-            <span>➔</span> Logout
-          </button>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-[#0D241F] text-white p-6 rounded-2xl shadow-sm relative overflow-hidden">
+          <p className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+            Total Omset Pendapatan
+          </p>
+          <h2 className="text-3xl font-black font-mono mt-2">
+            {new Intl.NumberFormat("id-ID", {
+              style: "currency",
+              currency: "IDR",
+              maximumFractionDigits: 0,
+            }).format(revenue)}
+          </h2>
         </div>
-      </aside>
-
-      {/* DASHBOARD MAIN CONTENT */}
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto h-screen">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl font-black text-[#0D241F] tracking-tight">
-              {activeTab === "Dashboard"
-                ? `${store?.store_name} Control Centre`
-                : activeTab}
-            </h1>
-            <p className="text-slate-400 text-xs mt-0.5">
-              {activeTab === "Dashboard" &&
-                "Manage your products, monitor inventory, and process orders."}
-              {activeTab === "Katalog Produk" &&
-                "Tambah, edit, atau hapus produk dari katalog toko Anda."}
-              {activeTab === "Pesanan Masuk" &&
-                "Pantau dan proses pesanan dari pelanggan Anda."}
-            </p>
-          </div>
+        <div className="bg-white border border-slate-200/60 p-6 rounded-2xl shadow-2xs">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Total Katalog Produk
+          </p>
+          <h2 className="text-3xl font-black font-mono text-[#0D241F] mt-2">
+            {products?.length || 0}{" "}
+            <span className="text-sm font-sans font-bold text-slate-400">
+              Items
+            </span>
+          </h2>
         </div>
+        <div className="bg-white border border-slate-200/60 p-6 rounded-2xl shadow-2xs">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Pesanan Masuk
+          </p>
+          <h2 className="text-3xl font-black font-mono text-[#0D241F] mt-2">
+            {orders?.filter((o) => {
+              const status = (o.current_status || "")
+                .toLowerCase()
+                .replace(/\s+/g, "");
+              return status === "sedangdikemas" || status === "dikemas";
+            }).length || 0}{" "}
+            <span className="text-sm font-sans font-bold text-amber-600">
+              Perlu Dikemas
+            </span>
+          </h2>
+        </div>
+      </div>
 
-        {activeTab === "Dashboard" && (
-          <div className="animate-in fade-in duration-500">
-            {/* STATS BAR */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-              <div className="bg-[#0D241F] text-white p-6 rounded-[24px] shadow-sm relative overflow-hidden">
-                <p className="text-xs font-bold uppercase tracking-wider text-emerald-300">
-                  Total Pendapatan Toko
-                </p>
-                <h2 className="text-3xl font-black font-mono mt-2">
-                  {new Intl.NumberFormat("id-ID", {
-                    style: "currency",
-                    currency: "IDR",
-                    maximumFractionDigits: 0,
-                  }).format(revenue)}
-                </h2>
-              </div>
-              <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] shadow-xs">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Total Katalog Produk
-                </p>
-                <h2 className="text-3xl font-black font-mono text-[#0D241F] mt-2">
-                  {products.length}{" "}
-                  <span className="text-sm font-sans font-bold text-slate-400">
-                    Items
-                  </span>
-                </h2>
-              </div>
-              <div className="bg-white border border-slate-200/60 p-6 rounded-[24px] shadow-xs">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Pesanan Masuk
-                </p>
-                <h2 className="text-3xl font-black font-mono text-[#0D241F] mt-2">
-                  {orders.filter((o) => o.status === "Sedang Dikemas").length}{" "}
-                  <span className="text-sm font-sans font-bold text-amber-600">
-                    Perlu Dikemas
-                  </span>
-                </h2>
-              </div>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs">
+            <h3 className="font-extrabold text-sm text-[#0D241F] uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
+              Manifest Pesanan Terbaru
+            </h3>
+            {!orders || orders.length === 0 ? (
+              <p className="text-xs text-slate-400 font-medium py-4">
+                Belum ada antrean transaksi konsumen yang tercatat.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {orders.slice(0, 3).map((order) => {
+                  const itemsArray = order.order_items || [];
+                  const firstItem = itemsArray[0] || {};
+                  const productMaster = firstItem.products || {};
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="space-y-8">
-                <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs">
-                  <h3 className="font-black text-base text-[#0D241F] mb-4">
-                    📥 Pesanan Terbaru
-                  </h3>
-                  {orders.length === 0 ? (
-                    <p className="text-xs text-slate-400 italic">
-                      Belum ada pesanan masuk.
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {orders.slice(0, 3).map((order) => (
-                        <div
-                          key={order.id}
-                          className="p-4 bg-[#F8F9FA] rounded-xl border border-slate-200/60 text-xs flex justify-between items-center"
-                        >
-                          <div>
-                            <p className="font-bold text-slate-700">
-                              Order ...{order.id.slice(-6)}
-                            </p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">
-                              {order.quantity} Items •{" "}
-                              {new Intl.NumberFormat("id-ID", {
-                                style: "currency",
-                                currency: "IDR",
-                              }).format(order.total_price)}
-                            </p>
-                          </div>
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${order.status === "Sedang Dikemas" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}
-                          >
-                            {order.status}
-                          </span>
-                        </div>
-                      ))}
-                      {orders.length > 3 && (
-                        <button
-                          onClick={() => setActiveTab("Pesanan Masuk")}
-                          className="w-full text-center py-2 text-xs font-bold text-[#0D241F] hover:underline cursor-pointer border-none bg-transparent"
-                        >
-                          Lihat Semua Pesanan ➔
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+                  const firstItemName =
+                    productMaster.product_name ||
+                    firstItem.product_name ||
+                    firstItem.name ||
+                    (itemsArray.length > 0
+                      ? `Paket (${itemsArray.length} Barang)`
+                      : "Produk Eksklusif");
 
-              <div className="space-y-8">
-                <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs">
-                  <h3 className="font-black text-base text-[#0D241F] mb-3">
-                    🏪 Manajemen Profil Toko
-                  </h3>
-                  <form onSubmit={handleUpdateStore} className="space-y-3">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        Nama Toko
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={storeName}
-                        onChange={(e) => setStoreName(e.target.value)}
-                        className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2 px-3 text-xs outline-none focus:bg-white focus:border-emerald-600 transition"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        Slogan / Deskripsi
-                      </label>
-                      <textarea
-                        rows="2"
-                        value={storeDesc}
-                        onChange={(e) => setStoreDesc(e.target.value)}
-                        className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2 px-3 text-xs outline-none focus:bg-white focus:border-emerald-600 transition resize-none leading-relaxed"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        Alamat Gudang
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={storeAddress}
-                        onChange={(e) => setStoreAddress(e.target.value)}
-                        className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2 px-3 text-xs outline-none focus:bg-white focus:border-emerald-600 transition"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={actionLoading}
-                      className="w-full mt-2 py-2 bg-[#0D241F] hover:bg-emerald-950 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer border-none"
-                    >
-                      Perbarui Informasi Toko
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+                  const displayImage = parseImageUrl(
+                    productMaster.image_url || firstItem.image_url,
+                  );
 
-        {activeTab === "Katalog Produk" && (
-          <ProductCatalog
-            products={products}
-            store={store}
-            fetchSellerData={fetchSellerData}
-            user={user}
-            actionLoading={actionLoading}
-            setActionLoading={setActionLoading}
-          />
-        )}
+                  const totalQty =
+                    itemsArray.reduce((sum, i) => sum + (i.quantity || 0), 0) ||
+                    1;
 
-        {activeTab === "Pesanan Masuk" && (
-          <div className="animate-in fade-in duration-500">
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs">
-              <h3 className="font-black text-base text-[#0D241F] mb-4">
-                📥 Manajemen Semua Pesanan
-              </h3>
-              {orders.length === 0 ? (
-                <p className="text-xs text-slate-400 italic">
-                  Belum ada pesanan masuk.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {orders.map((order) => (
+                  return (
                     <div
                       key={order.id}
-                      className="p-4 bg-[#F8F9FA] rounded-xl border border-slate-200/60 text-xs flex flex-col gap-3"
+                      className="p-4 bg-[#F8F9FA] rounded-xl border border-slate-200/60 text-xs flex justify-between items-center"
                     >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-[10px] text-slate-400 font-mono">
-                            ID: ...{order.id.slice(-8)}
+                      <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                        <div className="w-10 h-10 bg-white border border-slate-200 rounded-lg overflow-hidden flex items-center justify-center p-0.5 shrink-0 shadow-3xs">
+                          <img
+                            src={displayImage}
+                            alt={firstItemName}
+                            className="max-w-full max-h-full object-contain"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src =
+                                "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=150";
+                            }}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-slate-700 truncate">
+                            {firstItemName}
                           </p>
-                          <p className="font-bold text-slate-700 mt-0.5">
-                            {order.quantity} Pcs •{" "}
+                          <p className="text-[10px] text-slate-400 mt-0.5 font-medium">
+                            {totalQty} Items •{" "}
                             {new Intl.NumberFormat("id-ID", {
                               style: "currency",
                               currency: "IDR",
-                            }).format(order.total_price)}
+                              maximumFractionDigits: 0,
+                            }).format(order.final_total)}
                           </p>
                         </div>
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${order.status === "Sedang Dikemas" ? "bg-amber-100 text-amber-800" : order.status === "Menunggu Pengirim" ? "bg-blue-100 text-blue-800" : "bg-emerald-100 text-emerald-800"}`}
-                        >
-                          {order.status}
-                        </span>
                       </div>
-                      {order.status === "Sedang Dikemas" && (
-                        <button
-                          onClick={() => handleUpdateOrderStatus(order.id)}
-                          className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold rounded-lg transition cursor-pointer border-none"
-                        >
-                          Ubah Jadi "Menunggu Pengirim" ➔
-                        </button>
-                      )}
+                      <span
+                        className={`px-2.5 py-0.5 rounded text-[9px] font-black uppercase shrink-0 ${
+                          (order.current_status || "")
+                            .toLowerCase()
+                            .replace(/\s+/g, "")
+                            .includes("dikemas")
+                            ? "bg-amber-50 text-amber-800 border border-amber-200/40"
+                            : "bg-emerald-50 text-emerald-800 border border-emerald-200/40"
+                        }`}
+                      >
+                        {order.current_status || "Pending"}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
-        <footer className="border-t border-slate-200 mt-12 pt-6 text-[10px] text-slate-400 font-mono text-center">
-          &copy; {new Date().getFullYear()} SEAPEDIA Commerce Merchant Inc. All
-          rights reserved.
-        </footer>
-      </main>
+        <div className="space-y-6">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs">
+            <h3 className="font-extrabold text-sm text-[#0D241F] uppercase tracking-wider mb-3 border-b border-slate-100 pb-2">
+              Manajemen Profil Toko
+            </h3>
+            <form onSubmit={handleUpdateStore} className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  Nama Toko
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={storeName}
+                  onChange={(e) => setStoreName(e.target.value)}
+                  className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2 px-3 text-xs outline-none focus:bg-white focus:border-emerald-600 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  Slogan / Deskripsi
+                </label>
+                <textarea
+                  rows="2"
+                  value={storeDesc}
+                  onChange={(e) => setStoreDesc(e.target.value)}
+                  className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2 px-3 text-xs outline-none focus:bg-white focus:border-emerald-600 transition resize-none leading-relaxed"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  Alamat Gudang
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={storeAddress}
+                  onChange={(e) => setStoreAddress(e.target.value)}
+                  className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2 px-3 text-xs outline-none focus:bg-white focus:border-emerald-600 transition"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={actionLoading}
+                className="w-full mt-2 py-2 bg-[#0D241F] hover:bg-emerald-950 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer border-none disabled:bg-slate-300"
+              >
+                {actionLoading
+                  ? "Menyimpan Perubahan..."
+                  : "Perbarui Informasi Toko"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

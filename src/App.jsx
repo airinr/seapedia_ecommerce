@@ -10,25 +10,17 @@ import Register from "./pages/RegisterPage";
 import RoleSelection from "./pages/RoleSelection";
 import UserSettings from "./pages/UserSettings";
 import SellerRegistration from "./pages/SellerRegistration";
+import SellerLayout from "./pages/SellerPage/SellerLayout";
 import SellerDashboard from "./pages/SellerPage/SellerDashboard";
+import SellerOrdersPage from "./pages/SellerPage/SellerOrdersPage";
+import SellerOrderDetailPage from "./pages/SellerPage/SellerOrderDetailPage"; // 🚀 Import SellerOrderDetailPage
+import ProductCatalog from "./pages/SellerPage/ProductCatalog";
 import CartPage from "./pages/BuyerPage/CartPage";
 import ProductDetailPage from "./pages/BuyerPage/ProductDetailPage";
-import BuyerOrdersPage from "./pages/BuyerPage/BuyerOrdersPage"; // 🚀 Import BuyerOrdersPage
-
-// Dummy placeholder untuk halaman login & register sebelum kamu buat kodenya
-const LoginPlaceholder = () => (
-  <div className="min-h-screen flex items-center justify-center bg-slate-50">
-    <div className="bg-white p-8 rounded-xl shadow border border-slate-200 text-center">
-      <h2 className="text-xl font-bold mb-2">Halaman Login</h2>
-      <p className="text-slate-500 text-sm mb-4">
-        Fitur Auth akan diintegrasikan menggunakan Supabase Auth.
-      </p>
-      <a href="/" className="text-blue-600 hover:underline text-sm">
-        ⬅ Kembali ke Landing Page
-      </a>
-    </div>
-  </div>
-);
+import BuyerOrdersPage from "./pages/BuyerPage/BuyerOrdersPage";
+import WalletPage from "./pages/BuyerPage/WalletPage";
+import BuyerLayout from "./pages/BuyerPage/BuyerLayout"; 
+import LoginPage from "./pages/LoginPage"; // 🚀 Import LoginPage
 
 export default function App() {
   return (
@@ -36,18 +28,29 @@ export default function App() {
       <Routes>
         {/* Jalur Utama: Landing Page SEAPEDIA */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/cart" element={<CartPage />} />
         <Route path="/product/:id" element={<ProductDetailPage />} />
-        <Route path="/orders" element={<BuyerOrdersPage />} /> {/* 🚀 Rute Orders */}
 
-        {/* Jalur Auth (Placeholder awal) */}
-        <Route path="/login" element={<LoginPlaceholder />} />
+        {/* Panel Buyer (dengan Sidebar Khusus Buyer) */}
+        <Route element={<BuyerLayout />}>
+          <Route path="/settings" element={<UserSettings />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/orders" element={<BuyerOrdersPage />} />
+          <Route path="/wallet" element={<WalletPage />} />
+        </Route>
+
+        {/* Jalur Auth */}
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<Register />} />
         <Route path="/role-selection" element={<RoleSelection />} />
-        <Route path="/settings" element={<UserSettings />} />
         <Route path="/register-seller" element={<SellerRegistration />} />
 
-        <Route path="/seller/dashboard" element={<SellerDashboard />} />
+        {/* Panel Seller (dengan Sidebar Khusus Seller) */}
+        <Route element={<SellerLayout />}>
+          <Route path="/seller/dashboard" element={<SellerDashboard />} />
+          <Route path="/seller/catalog" element={<ProductCatalog />} />
+          <Route path="/seller/orders" element={<SellerOrdersPage />} />
+          <Route path="/seller/orders/:id" element={<SellerOrderDetailPage />} />
+        </Route>
 
         {/* Fallback otomatis jika user mengetik alamat asal: lempar kembali ke Landing Page */}
         <Route path="*" element={<Navigate to="/" replace />} />

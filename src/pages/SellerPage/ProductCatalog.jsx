@@ -1,14 +1,11 @@
 import { useState, useRef } from "react";
+import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
-export default function ProductCatalog({
-  products,
-  store,
-  fetchSellerData,
-  user,
-  actionLoading,
-  setActionLoading,
-}) {
+export default function ProductCatalog() {
+  const { products, store, fetchSellerData, user } = useOutletContext();
+  const [actionLoading, setActionLoading] = useState(false);
+
   // Modal & Edit State
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);

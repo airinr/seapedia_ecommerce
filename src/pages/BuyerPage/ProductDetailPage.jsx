@@ -131,7 +131,7 @@ export default function ProductDetailPage() {
       <header className="bg-white/80 border-b border-slate-200/60 sticky top-0 z-50 backdrop-blur-md shadow-xs">
         <div className="container mx-auto px-4 lg:px-12 py-3.5 flex justify-between items-center">
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate(-1)}
             className="text-xs font-bold text-slate-600 flex items-center gap-2 border-none bg-transparent hover:text-[#0D241F] transition cursor-pointer"
           >
             <span>⬅</span> Back to Store

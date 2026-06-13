@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useRole } from "../hooks/useRole";
 import { useNavigate } from "react-router-dom";
-import { useCart } from "../context/CartContext"; // 🚀 1. IMPORT HOOK KERANJANG
+import { useCart } from "../context/CartContext";
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const { user, ownedRoles, activeRole, setActiveRole } = useRole();
-  const { addToCart, getCartCount } = useCart(); // 🚀 2. UNBOX FUNGSI AKSES BELANJA
+  const { addToCart, getCartCount } = useCart();
   const [products, setProducts] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -119,6 +119,20 @@ export default function LandingPage() {
     }
   }, [user, ownedRoles, activeRole, setActiveRole]);
 
+  // =========================================================================
+  // 🚀 FUNGSI UTILITY LOGOUT SUPABASE AUTH
+  // =========================================================================
+  const handleLogout = async () => {
+    if (!confirm("Apakah Anda yakin ingin keluar dari akun Seapedia?")) return;
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      window.location.reload(); // Refresh halaman untuk membersihkan sisa state
+    } catch (error) {
+      alert(`Gagal Logout: ${error.message}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FDFDFD] text-[#23263B] font-sans antialiased">
       {/* 1. ANNOUNCEMENT BAR */}
@@ -131,7 +145,7 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="hidden md:block text-[11px] font-mono opacity-80 shrink-0">
-            System Time: 2026.06.12
+            System Time: 2026.06.13
           </div>
         </div>
       </div>
@@ -140,12 +154,12 @@ export default function LandingPage() {
       <header className="bg-white border-b border-slate-100 sticky top-0 z-50 shadow-xs">
         <div className="container mx-auto px-4 lg:px-8 py-4 flex justify-between items-center gap-4">
           <div className="flex items-center gap-8">
-            <a
-              href="/"
-              className="text-xl font-black tracking-tight text-[#0D241F] flex items-center gap-2"
+            <button
+              onClick={() => navigate("/")}
+              className="text-xl font-black tracking-tight text-[#0D241F] flex items-center gap-2 bg-transparent border-none cursor-pointer"
             >
               <span className="text-emerald-600">🛒</span> SEAPEDIA
-            </a>
+            </button>
             <nav className="hidden lg:flex items-center gap-6 text-sm font-semibold text-[#4A4E5A]">
               <div className="cursor-pointer hover:text-emerald-600 flex items-center gap-1">
                 Categories <span className="text-[10px]">▼</span>
@@ -172,8 +186,9 @@ export default function LandingPage() {
           </div>
 
           <div className="flex items-center gap-6 text-sm font-semibold text-[#23263B]">
+            {/* 🚀 AKSI KONDISIONAL AUTENTIKASI SUPABASE AUTH */}
             {user ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-5">
                 <div className="text-right hidden sm:block">
                   <p className="text-xs font-black text-[#0D241F]">
                     {user.user_metadata?.full_name || "User SEAPEDIA"}
@@ -183,6 +198,7 @@ export default function LandingPage() {
                   </p>
                 </div>
 
+                {/* Avatar Button Menuju Settings */}
                 <button
                   onClick={() => navigate("/settings")}
                   className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center font-bold text-xs shadow-xs hover:bg-emerald-100 transition cursor-pointer"
@@ -190,33 +206,55 @@ export default function LandingPage() {
                   {user.user_metadata?.full_name?.charAt(0).toUpperCase() ||
                     "U"}
                 </button>
+
+                {/* Tombol Akses Wallet Baru */}
+                <div
+                  onClick={() => navigate("/wallet")}
+                  className="flex items-center gap-1 cursor-pointer hover:text-emerald-600"
+                >
+                  <span className="text-lg">💳</span>
+                  <span className="text-xs hidden lg:inline font-bold">
+                    Wallet
+                  </span>
+                </div>
+
+                {/* Tombol Pesanan Saya */}
+                <div
+                  onClick={() => navigate("/orders")}
+                  className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-600 relative"
+                >
+                  <span className="text-lg">📦</span>
+                  <span className="text-xs hidden sm:inline font-bold">
+                    Orders
+                  </span>
+                </div>
+
+                {/* Tombol Logout Bawaan */}
+                <button
+                  onClick={handleLogout}
+                  className="text-red-500 hover:text-red-700 bg-transparent border-none text-xs font-bold font-sans cursor-pointer transition"
+                >
+                  Logout
+                </button>
               </div>
             ) : (
               <div className="flex items-center gap-4">
-                <a href="/login" className="hover:text-emerald-600">
+                <button
+                  onClick={() => navigate("/login")}
+                  className="hover:text-emerald-600 bg-transparent border-none text-sm font-semibold text-[#23263B] cursor-pointer"
+                >
                   Login
-                </a>
-                <a
-                  href="/register"
-                  className="bg-[#0D241F] text-white px-4 py-2 rounded-full text-xs hover:bg-emerald-950 transition"
+                </button>
+                <button
+                  onClick={() => navigate("/register")}
+                  className="bg-[#0D241F] text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-emerald-950 transition border-none cursor-pointer"
                 >
                   Register
-                </a>
+                </button>
               </div>
             )}
 
-            {/* Tombol Pesanan Saya (Muncul jika user login) */}
-            {user && (
-              <div
-                onClick={() => navigate("/orders")}
-                className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-600 relative"
-              >
-                <span className="text-lg">📦</span>
-                <span className="text-xs hidden sm:inline font-bold">Pesanan Saya</span>
-              </div>
-            )}
-
-            {/* 🚀 3. SINKRONISASI BADGE JUMLAH KERANJANG REAL-TIME */}
+            {/* BADGE JUMLAH KERANJANG BELANJA REAL-TIME */}
             <div
               onClick={() => navigate("/cart")}
               className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-600 relative"
@@ -231,32 +269,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* 3. HERO BANNER */}
-      {/* <section className="container mx-auto px-4 lg:px-8 pt-6">
-        <div className="w-full bg-[#EBF4F1] rounded-[24px] overflow-hidden relative min-h-[260px] md:min-h-[420px] flex items-center shadow-sm">
-          <div className="p-8 md:p-16 max-w-md md:max-w-xl z-10 relative">
-            <h1 className="text-3xl md:text-5xl font-black text-[#0D241F] tracking-tight leading-none">
-              Grab Up to 50% Off On Selected Headphone
-            </h1>
-            <div className="mt-6">
-              <button className="bg-[#0D241F] hover:bg-emerald-950 text-white font-bold text-xs md:text-sm px-6 py-3 rounded-full shadow transition">
-                Buy Now
-              </button>
-            </div>
-          </div>
-
-          <div className="absolute right-0 bottom-0 top-0 w-full md:w-[60%] h-full z-0 opacity-40 md:opacity-100">
-            <img
-              src="https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800"
-              alt="SEAPEDIA Hero Banner"
-              className="w-full h-full object-cover object-center"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#EBF4F1] via-[#EBF4F1]/70 to-transparent"></div>
-          </div>
-        </div>
-      </section> */}
-
-      {/* 4. BARISAN FILTER TOMBOL (REDUCED) */}
+      {/* 4. BARISAN FILTER TOMBOL */}
       <section className="container mx-auto px-4 lg:px-8 pt-8 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2.5 text-xs font-semibold">
           <button className="bg-[#EBF4F1] text-emerald-800 px-6 py-2.5 rounded-full border border-emerald-100 font-bold">
@@ -309,8 +322,8 @@ export default function LandingPage() {
                       </span>
                     )}
 
-                    <button 
-                      onClick={(e) => e.stopPropagation()} 
+                    <button
+                      onClick={(e) => e.stopPropagation()}
                       className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400 hover:text-red-500 transition text-sm border-none cursor-pointer"
                     >
                       🤍
@@ -342,7 +355,7 @@ export default function LandingPage() {
                     </span>
                   </div>
 
-                  {/* 🚀 4. HUBUNGKAN TOMBOL ADD TO CART & BELI SEKARANG */}
+                  {/* ACTION BUTTONS */}
                   <div className="mt-4 flex gap-2">
                     <button
                       onClick={(e) => {
@@ -370,32 +383,6 @@ export default function LandingPage() {
           </div>
         )}
       </section>
-
-      {/* 6. POPULAR CATEGORIES SECTION */}
-      {/* <section className="container mx-auto px-4 lg:px-8 py-8 border-t border-slate-100">
-        <h2 className="text-xl md:text-2xl font-black text-[#0D241F] mb-6">
-          Popular Categories
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-          {[
-            { name: "Furniture", icon: "🪑", count: "240 Items" },
-            { name: "Shoe", icon: "👟", count: "180 Items" },
-            { name: "Laptop", icon: "💻", count: "95 Items" },
-            { name: "Headphone", icon: "🎧", count: "1.2k Items" },
-            { name: "Bag", icon: "👜", count: "310 Items" },
-            { name: "Book", icon: "📚", count: "450 Items" },
-          ].map((cat, i) => (
-            <div
-              key={i}
-              className="bg-[#F5F6F6] p-5 rounded-[16px] text-center border border-transparent hover:border-slate-200 hover:shadow-sm cursor-pointer transition"
-            >
-              <div className="text-3xl mb-2">{cat.icon}</div>
-              <h4 className="font-bold text-xs text-[#23263B]">{cat.name}</h4>
-              <p className="text-[10px] text-slate-400 mt-0.5">{cat.count}</p>
-            </div>
-          ))}
-        </div>
-      </section> */}
 
       {/* 7. PUBLIC APPLICATION REVIEWS */}
       <section className="container mx-auto px-4 lg:px-8 py-8 border-t border-slate-100">
