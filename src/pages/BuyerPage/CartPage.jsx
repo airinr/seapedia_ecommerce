@@ -15,27 +15,94 @@ export default function CartPage() {
     clearCart,
   } = useCart();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-
-  // 🚀 STATE BARU: Opsi Metode Pengiriman (Ongkir Dinamis)
   const [deliveryMethod, setDeliveryMethod] = useState("Regular");
+  const [voucherCode, setVoucherCode] = useState("");
+  const [appliedVoucher, setAppliedVoucher] = useState(null);
+  const [voucherError, setVoucherError] = useState("");
 
-  // DEFINISI TARIF ONGKIR BERDASARKAN METODE
   const deliveryRates = {
     Instant: 25000,
     "Next Day": 15000,
     Regular: 10000,
   };
 
-  // KALKULASI UTAMA TRANSKASIONAL (PPN 12%)
   const totalCartPrice = getCartTotal();
+  const discountAmount = appliedVoucher ? appliedVoucher.value_amount : 0;
   const currentDeliveryFee =
     cartItems.length > 0 ? deliveryRates[deliveryMethod] : 0;
-  const taxAmount = Math.round(totalCartPrice * 0.12); // 🚀 UPDATE: PPN 12%
-  const grandTotal = totalCartPrice + currentDeliveryFee + taxAmount;
+  const taxAmount = Math.round((totalCartPrice - discountAmount) * 0.12);
+  const grandTotal = Math.max(
+    0,
+    totalCartPrice - discountAmount + currentDeliveryFee + taxAmount,
+  );
+
+  const uniqueStoreIds = [...new Set(cartItems.map((item) => item.store_id))];
+  const isMultiStore = uniqueStoreIds.length > 1;
+
+  const handleApplyVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    setVoucherError("");
+
+    if (isMultiStore) {
+      setVoucherError(
+        "Voucher hanya bisa digunakan untuk pesanan dari satu toko.",
+      );
+      return;
+    }
+
+    try {
+      const storeId = uniqueStoreIds[0];
+      const { data, error } = await supabase
+        .from("discounts")
+        .select("*")
+        .eq("store_id", storeId)
+        .eq("code", voucherCode.toUpperCase().trim())
+        .single();
+
+      let voucher = data;
+      if (error) {
+        const localVouchers = JSON.parse(
+          localStorage.getItem(`vouchers_${storeId}`) || "[]",
+        );
+        voucher = localVouchers.find(
+          (v) => v.code === voucherCode.toUpperCase().trim(),
+        );
+      }
+
+      if (!voucher) {
+        setVoucherError("Kode voucher tidak valid.");
+        return;
+      }
+
+      if (new Date(voucher.expiry_date) < new Date()) {
+        setVoucherError("Voucher telah kedaluwarsa.");
+        return;
+      }
+
+      if ((voucher.remaining_usage ?? 0) <= 0) {
+        setVoucherError("Batas pemakaian voucher telah habis.");
+        return;
+      }
+
+      setAppliedVoucher(voucher);
+      setVoucherCode("");
+      alert(`Voucher "${voucher.code}" berhasil dipasang!`);
+    } catch (err) {
+      setVoucherError("Terjadi kesalahan saat validasi voucher.");
+      console.log(err);
+    }
+  };
 
   const handleCheckout = async () => {
     try {
       setCheckoutLoading(true);
+
+      if (isMultiStore) {
+        alert(
+          "Gagal memproses transaksi: Aturan Single-Store Checkout aktif. Anda hanya dapat melakukan checkout dari satu toko yang sama dalam satu transaksi. Silakan hapus produk dari toko lain terlebih dahulu.",
+        );
+        return;
+      }
 
       const {
         data: { user: authUser },
@@ -50,7 +117,6 @@ export default function CartPage() {
 
       if (cartItems.length === 0) return;
 
-      // TARIK SALDO DARI TABEL PROFILES
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("wallet_balance")
@@ -74,7 +140,6 @@ export default function CartPage() {
         return;
       }
 
-      // DEBIT POTONG SALDO DI TABEL PROFILES
       const newBalance = currentDbBalance - grandTotal;
       const { error: updateProfileError } = await supabase
         .from("profiles")
@@ -86,7 +151,57 @@ export default function CartPage() {
           `Gagal memotong saldo wallet: ${updateProfileError.message}`,
         );
 
-      // Sinkronisasi LocalStorage Fallback
+      // 🚀 PROSES BARU: Masukkan data log transaksi pembayaran langsung ke tabel wallet_transactions Supabase
+      const txDescription = `Pembayaran pesanan toko sebanyak ${getCartCount()} item`;
+      const { error: walletTxError } = await supabase
+        .from("wallet_transactions")
+        .insert([
+          {
+            user_id: authUser.id,
+            type: "PAYMENT",
+            amount: grandTotal,
+            description: txDescription,
+          },
+        ]);
+
+      if (walletTxError)
+        console.error(
+          "Gagal mencatat mutasi riwayat transaksi ke Supabase:",
+          walletTxError.message,
+        );
+
+      if (appliedVoucher) {
+        const { error: voucherUpdateError } = await supabase
+          .from("discounts")
+          .update({
+            remaining_usage: Math.max(
+              0,
+              (appliedVoucher.remaining_usage ?? 1) - 1,
+            ),
+          })
+          .eq("id", appliedVoucher.id);
+
+        if (voucherUpdateError) {
+          const storeId = uniqueStoreIds[0];
+          const localVouchers = JSON.parse(
+            localStorage.getItem(`vouchers_${storeId}`) || "[]",
+          );
+          const idx = localVouchers.findIndex(
+            (v) => v.id === appliedVoucher.id,
+          );
+          if (idx !== -1) {
+            localVouchers[idx].remaining_usage = Math.max(
+              0,
+              (localVouchers[idx].remaining_usage ?? 1) - 1,
+            );
+            localStorage.setItem(
+              `vouchers_${storeId}`,
+              JSON.stringify(localVouchers),
+            );
+          }
+        }
+      }
+
       const walletKey = `seapedia_wallet_${authUser.id}`;
       const walletStr = localStorage.getItem(walletKey);
       let localWalletData = walletStr
@@ -98,85 +213,63 @@ export default function CartPage() {
         type: "PAYMENT",
         amount: grandTotal,
         date: new Date().toISOString(),
-        description: `Pembayaran pesanan sebanyak ${getCartCount()} item`,
+        description: txDescription,
       });
       localStorage.setItem(walletKey, JSON.stringify(localWalletData));
 
-      // GROUP BY MERCHANT / STORE_ID
-      const itemsByStore = cartItems.reduce((acc, item) => {
-        if (!acc[item.store_id]) {
-          acc[item.store_id] = [];
-        }
-        acc[item.store_id].push(item);
-        return acc;
-      }, {});
+      const storeId = uniqueStoreIds[0];
+      const initialStatus = "Sedang Dikemas";
+      const defaultAddress = "Alamat Pengiriman Utama Pembeli";
 
-      // ITERASI PEMBUATAN NOTA ORDERS
-      for (const storeId in itemsByStore) {
-        const storeProducts = itemsByStore[storeId];
-        const storeSubtotal = storeProducts.reduce(
-          (sum, item) => sum + item.price * item.quantity,
-          0,
-        );
+      const { data: insertedOrder, error: masterOrderError } = await supabase
+        .from("orders")
+        .insert([
+          {
+            buyer_id: authUser.id,
+            store_id: storeId,
+            subtotal: Number(totalCartPrice),
+            discount_amount: Number(discountAmount),
+            delivery_fee: Number(currentDeliveryFee),
+            tax_amount: Number(taxAmount),
+            final_total: Number(grandTotal),
+            delivery_method: deliveryMethod,
+            delivery_address: defaultAddress,
+            current_status: initialStatus,
+          },
+        ])
+        .select("id")
+        .single();
 
-        const itemTax = Math.round(storeSubtotal * 0.12); // PPN 12% Per Store Split
-        const finalTotal = storeSubtotal + currentDeliveryFee + itemTax;
-        const defaultAddress = "Alamat Pengiriman Utama Pembeli";
-        const initialStatus = "Sedang Dikemas";
+      if (masterOrderError) throw masterOrderError;
+      const newOrderId = insertedOrder.id;
 
-        // A. INSERT INTO ORDERS
-        const { data: insertedOrder, error: masterOrderError } = await supabase
-          .from("orders")
-          .insert([
-            {
-              buyer_id: authUser.id,
-              store_id: storeId,
-              subtotal: Number(storeSubtotal),
-              discount_amount: 0,
-              delivery_fee: Number(currentDeliveryFee),
-              tax_amount: Number(itemTax),
-              final_total: Number(finalTotal),
-              delivery_method: deliveryMethod,
-              delivery_address: defaultAddress,
-              current_status: initialStatus,
-            },
-          ])
-          .select("id")
-          .single();
-
-        if (masterOrderError) throw masterOrderError;
-        const newOrderId = insertedOrder.id;
-
-        // B. INSERT INTO ORDER_ITEMS
-        for (const item of storeProducts) {
-          const { error: itemInsertError } = await supabase
-            .from("order_items")
-            .insert([
-              {
-                order_id: newOrderId,
-                product_id: item.id,
-                product_name: item.product_name,
-                price: Number(item.price),
-                quantity: Number(item.quantity),
-              },
-            ]);
-
-          if (itemInsertError) throw itemInsertError;
-        }
-
-        // C. INSERT INTO ORDER_STATUS_HISTORIES
-        const { error: historyError } = await supabase
-          .from("order_status_histories")
+      for (const item of cartItems) {
+        const { error: itemInsertError } = await supabase
+          .from("order_items")
           .insert([
             {
               order_id: newOrderId,
-              status: initialStatus,
-              changed_by: authUser.id,
+              product_id: item.id,
+              product_name: item.product_name,
+              price: Number(item.price),
+              quantity: Number(item.quantity),
             },
           ]);
 
-        if (historyError) throw historyError;
+        if (itemInsertError) throw itemInsertError;
       }
+
+      const { error: historyError } = await supabase
+        .from("order_status_histories")
+        .insert([
+          {
+            order_id: newOrderId,
+            status: initialStatus,
+            changed_by: authUser.id,
+          },
+        ]);
+
+      if (historyError) throw historyError;
 
       clearCart();
       alert(
@@ -197,6 +290,15 @@ export default function CartPage() {
           <h1 className="text-xl font-extrabold text-[#0D241F] tracking-tight">
             Keranjang Belanja ({getCartCount()} Item)
           </h1>
+
+          {isMultiStore && (
+            <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl text-xs font-semibold leading-relaxed animate-pulse">
+              Peringatan: Keranjang Anda berisi produk dari toko yang berbeda.
+              Sesuai kebijakan Single-Store Checkout, Anda wajib menyelesaikan
+              pesanan per satu toko secara bergantian. Harap sisakan produk dari
+              satu toko saja untuk melanjutkan pembayaran.
+            </div>
+          )}
 
           {cartItems.length === 0 ? (
             <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-16 text-center">
@@ -270,7 +372,6 @@ export default function CartPage() {
                 </div>
               ))}
 
-              {/* 🚀 COMPONENT BARU: OPSI PILIHAN METODE PENGIRIMAN */}
               <div className="bg-white border border-slate-200/60 rounded-xl p-5 shadow-2xs mt-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#0D241F] mb-3">
                   Pilih Metode Pengiriman
@@ -293,6 +394,7 @@ export default function CartPage() {
                           checked={deliveryMethod === method}
                           onChange={(e) => setDeliveryMethod(e.target.value)}
                           className="accent-emerald-700"
+                          disabled={isMultiStore}
                         />
                         <span className="text-xs font-bold text-[#0D241F]">
                           {method}
@@ -313,7 +415,6 @@ export default function CartPage() {
           )}
         </div>
 
-        {/* RIGHT: SUMMARY CARD */}
         {cartItems.length > 0 && (
           <div className="w-full lg:w-80">
             <div className="bg-[#0D241F] text-white p-6 rounded-2xl shadow-sm sticky top-24">
@@ -322,8 +423,69 @@ export default function CartPage() {
               </h3>
 
               <div className="space-y-3 border-b border-white/10 pb-4 mb-4 text-xs font-medium">
+                <div className="py-2">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                    Voucher Toko
+                  </label>
+                  {!appliedVoucher ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={voucherCode}
+                        onChange={(e) => setVoucherCode(e.target.value)}
+                        placeholder="Masukkan kode promo"
+                        className="flex-1 bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-[11px] font-bold text-white outline-none focus:border-emerald-500 transition uppercase placeholder:text-white/20"
+                      />
+                      <button
+                        onClick={handleApplyVoucher}
+                        className="bg-emerald-500 hover:bg-emerald-400 text-[#0D241F] px-3 rounded-lg text-[10px] font-black uppercase transition cursor-pointer border-none"
+                      >
+                        Gunakan
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2 flex justify-between items-center">
+                      <div>
+                        <p className="text-[10px] font-black text-emerald-400 uppercase">
+                          {appliedVoucher.code}
+                        </p>
+                        <p className="text-[9px] text-emerald-400/60">
+                          Hemat Rp{" "}
+                          {Number(
+                            appliedVoucher.value_amount ?? 0,
+                          ).toLocaleString()}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setAppliedVoucher(null)}
+                        className="text-white/40 hover:text-red-400 transition cursor-pointer bg-transparent border-none"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M18 6 6 18" />
+                          <path d="m6 6 12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                  {voucherError && (
+                    <p className="text-[9px] text-red-400 mt-1 font-bold">
+                      {voucherError}
+                    </p>
+                  )}
+                </div>
+
                 <div className="flex justify-between text-slate-300">
-                  <span>Subtotal Items</span>
+                  <span>Subtotal Produk</span>
                   <span className="font-mono">
                     {new Intl.NumberFormat("id-ID", {
                       style: "currency",
@@ -332,6 +494,15 @@ export default function CartPage() {
                     }).format(totalCartPrice)}
                   </span>
                 </div>
+                {appliedVoucher && (
+                  <div className="flex justify-between text-emerald-400 font-bold">
+                    <span>Potongan Voucher</span>
+                    <span className="font-mono">
+                      -Rp{" "}
+                      {new Intl.NumberFormat("id-ID").format(discountAmount)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-slate-300">
                   <span>Ongkos Kirim ({deliveryMethod})</span>
                   <span className="font-mono">
@@ -340,7 +511,7 @@ export default function CartPage() {
                   </span>
                 </div>
                 <div className="flex justify-between text-slate-300">
-                  <span>PPN (12%)</span>
+                  <span>Pajak PPN (12%)</span>
                   <span className="font-mono">
                     {new Intl.NumberFormat("id-ID", {
                       style: "currency",
@@ -366,8 +537,8 @@ export default function CartPage() {
 
               <button
                 onClick={handleCheckout}
-                disabled={checkoutLoading}
-                className="w-full bg-emerald-500 hover:bg-emerald-400 text-[#0D241F] font-black py-3.5 rounded-xl text-xs transition shadow-md cursor-pointer border-none disabled:bg-slate-700 disabled:text-slate-400"
+                disabled={checkoutLoading || isMultiStore}
+                className="w-full bg-emerald-500 hover:bg-emerald-400 text-[#0D241F] font-black py-3.5 rounded-xl text-xs transition shadow-md cursor-pointer border-none disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed"
               >
                 {checkoutLoading ? "Memproses Transaksi..." : "Bayar Sekarang"}
               </button>

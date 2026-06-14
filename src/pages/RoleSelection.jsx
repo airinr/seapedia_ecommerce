@@ -37,33 +37,31 @@ export default function RoleSelection() {
   return (
     <div className="min-h-screen bg-[#FDFDFD] flex items-center justify-center p-6">
       <div className="w-full max-w-md bg-white border border-slate-200/60 rounded-[24px] p-8 shadow-sm text-center">
-        <span className="text-2xl">🔐</span>
-        <h2 className="text-2xl font-black text-[#0D241F] tracking-tight mt-3">
-          Pilih Role Sesi Ini
+        <h2 className="text-2xl font-black text-[#0D241F] tracking-tight">
+          Pilih Role Aktif
         </h2>
         <p className="text-slate-400 text-xs mt-1 max-w-xs mx-auto">
-          Akun kamu terdeteksi memiliki beberapa role sekaligus. Pilih role
-          aktif untuk memulai sesi ini.
+          Akun Anda memiliki beberapa role yang terdaftar. Silakan pilih role yang ingin Anda gunakan untuk sesi ini.
         </p>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-8 space-y-3">
           {ownedRoles.map((role) => (
             <button
               key={role}
               onClick={() => handleSelectRole(role)}
-              className="w-full py-3.5 px-4 bg-slate-50 hover:bg-emerald-50 border border-slate-200/60 hover:border-emerald-300 rounded-xl font-bold text-sm text-[#23263B] hover:text-emerald-900 transition flex items-center justify-between group cursor-pointer"
+              className="w-full py-3.5 px-5 bg-slate-50 hover:bg-emerald-50 border border-slate-200/60 hover:border-emerald-300 rounded-xl font-bold text-sm text-[#23263B] hover:text-emerald-900 transition flex items-center justify-between group cursor-pointer"
             >
-              <span>
+              <span className="uppercase tracking-wide">
                 {role === "Buyer"
-                  ? "🛍️ Bertindak sebagai Buyer"
+                  ? "Masuk sebagai Pembeli"
                   : role === "Seller"
-                    ? "🏪 Bertindak sebagai Seller"
+                    ? "Masuk sebagai Penjual"
                     : role === "Driver"
-                      ? "🚴 Bertindak sebagai Driver"
-                      : "🛡️ Bertindak sebagai Admin"}
+                      ? "Masuk sebagai Kurir"
+                      : `Masuk sebagai ${role}`}
               </span>
-              <span className="opacity-0 group-hover:opacity-100 transition duration-200">
-                ➔
+              <span className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition duration-200 text-emerald-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               </span>
             </button>
           ))}

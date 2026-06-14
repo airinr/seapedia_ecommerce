@@ -19,12 +19,48 @@ export default function BuyerLayout() {
   };
 
   const buyerMenus = [
-    { name: "Dashboard Utama", icon: "📊", path: "/" },
-    { name: "My Wallet", icon: "💳", path: "/wallet" },
-    { name: "My Orders", icon: "📝", path: "/orders" },
-    { name: "Shopping Cart", icon: "🛒", path: "/cart" },
-    { name: "Wishlist", icon: "❤️", path: "#" },
-    { name: "My Reviews", icon: "⭐", path: "#" },
+    { 
+      name: "Dasbor Utama", 
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+      ), 
+      path: "/" 
+    },
+    { 
+      name: "Dompet Saya", 
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+      ), 
+      path: "/wallet" 
+    },
+    { 
+      name: "Pesanan Saya", 
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+      ), 
+      path: "/orders" 
+    },
+    { 
+      name: "Keranjang", 
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+      ), 
+      path: "/cart" 
+    },
+    { 
+      name: "Favorit", 
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+      ), 
+      path: "#" 
+    },
+    { 
+      name: "Ulasan Saya", 
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      ), 
+      path: "#" 
+    },
   ];
 
   return (
@@ -34,10 +70,10 @@ export default function BuyerLayout() {
         <div className="space-y-7">
           <div>
             <h2 className="text-sm font-black text-[#0D241F] tracking-wider uppercase">
-              {activeRole || "Buyer"} Panel
+              Panel {activeRole === "Buyer" ? "Pembeli" : activeRole}
             </h2>
             <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-              Account Management
+              Manajemen Akun
             </p>
           </div>
 
@@ -54,7 +90,7 @@ export default function BuyerLayout() {
                       : "text-slate-500 hover:bg-slate-50"
                   }`}
                 >
-                  <span>{menu.icon}</span> {menu.name}
+                  <span className={isActive ? "text-emerald-400" : "text-slate-400"}>{menu.icon}</span> {menu.name}
                 </button>
               );
             })}
@@ -67,20 +103,26 @@ export default function BuyerLayout() {
                   : "text-slate-500 hover:bg-slate-50"
               }`}
             >
-              <span>⚙️</span> Settings
+              <span className={location.pathname === "/settings" ? "text-emerald-400" : "text-slate-400"}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+              </span> Pengaturan
             </button>
           </nav>
         </div>
 
         <div className="space-y-3 pt-6 border-t border-slate-100 text-xs font-bold text-slate-400">
-          <div className="flex items-center gap-2 cursor-pointer hover:text-[#0D241F]">
-            <span>❓</span> Help Center
+          <div className="flex items-center gap-2 cursor-pointer hover:text-[#0D241F] group transition">
+            <span className="group-hover:text-emerald-600">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+            </span> Pusat Bantuan
           </div>
           <div
             onClick={handleLogout}
-            className="flex items-center gap-2 cursor-pointer hover:text-red-600 transition"
+            className="flex items-center gap-2 cursor-pointer hover:text-red-600 transition group"
           >
-            <span>➔</span> Logout
+            <span className="group-hover:translate-x-1 transition-transform">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+            </span> Keluar
           </div>
         </div>
       </aside>

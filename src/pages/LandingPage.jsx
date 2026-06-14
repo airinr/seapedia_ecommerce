@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useRole } from "../hooks/useRole";
@@ -11,194 +12,215 @@ export default function LandingPage() {
   const [products, setProducts] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // =========================================================================
-  // 💡 EFFECT 1: AMBIL DATA KATALOG & ULASAN DARI SUPABASE
-  // =========================================================================
-  useEffect(() => {
-    async function fetchLandingData() {
-      try {
-        setLoading(true);
+  const [reviewerName, setReviewerName] = useState("");
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [submitLoading, setSubmitLoading] = useState(false);
 
-        const { data: productData, error: productError } = await supabase
-          .from("products")
-          .select("*")
-          .limit(4);
+  const fetchLandingData = async (query = "") => {
+    try {
+      setLoading(true);
 
-        if (productError) throw productError;
+      let productQuery = supabase.from("products").select("*");
 
-        const { data: reviewData, error: reviewError } = await supabase
-          .from("app_reviews")
-          .select("*")
-          .limit(4);
-
-        if (reviewError) throw reviewError;
-
-        if (productData && productData.length > 0) {
-          setProducts(productData);
-        } else {
-          setProducts([
-            {
-              id: 1,
-              product_name: "Wireless Earbuds IPX8",
-              price: 1320000,
-              stock: 12,
-              description: "Organic cotton, fair trade certified.",
-              image_url: [
-                "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500",
-              ],
-            },
-            {
-              id: 2,
-              product_name: "AirPods Max",
-              price: 8235000,
-              stock: 5,
-              description:
-                "A perfect balance of exhilarating high-fidelity audio.",
-              image_url: [
-                "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=500",
-              ],
-            },
-            {
-              id: 3,
-              product_name: "Bose BT Earphones",
-              price: 4335000,
-              stock: 8,
-              description: "Relax with noise isolation extra-bass black.",
-              image_url: [
-                "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500",
-              ],
-            },
-            {
-              id: 4,
-              product_name: "VIVEFOX Headphones",
-              price: 585000,
-              stock: 25,
-              description: "Wired stereo headsets with mic control.",
-              image_url: [
-                "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=500",
-              ],
-            },
-          ]);
-        }
-
-        if (reviewData && reviewData.length > 0) {
-          setReviews(reviewData);
-        } else {
-          setReviews([
-            {
-              id: 1,
-              reviewer_name: "Budi S.",
-              rating: 5,
-              comment: "Pengalaman multi-role yang luar biasa dan transparan!",
-            },
-            {
-              id: 2,
-              reviewer_name: "Siti R.",
-              rating: 4,
-              comment: "Navigasi antar dashboard sangat responsif.",
-            },
-          ]);
-        }
-      } catch (error) {
-        console.error("Gagal memuat data:", error.message);
-      } finally {
-        setLoading(false);
+      if (query.trim()) {
+        productQuery = productQuery.ilike("product_name", `%${query}%`);
+      } else {
+        productQuery = productQuery.limit(8);
       }
+
+      const { data: productData, error: productError } = await productQuery;
+
+      if (productError) throw productError;
+      setProducts(productData || []);
+
+      const { data: reviewData, error: reviewError } = await supabase
+        .from("app_reviews")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (reviewError) throw reviewError;
+
+      const localReviewsKey = "seapedia_local_reviews";
+      const savedLocalStr = localStorage.getItem(localReviewsKey);
+      const localReviews = savedLocalStr ? JSON.parse(savedLocalStr) : [];
+
+      setReviews([...localReviews, ...(reviewData || [])]);
+    } catch (error) {
+      console.error("Gagal memuat data:", error.message);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    fetchLandingData();
-  }, []);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchLandingData(searchQuery);
+    }, 400);
 
-  // =========================================================================
-  // 💡 EFFECT 2: RE-TRIGGER OTOMATIS PEMASANGAN ROLE SEBAGAI BUYER
-  // =========================================================================
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
   useEffect(() => {
     if (user && ownedRoles && ownedRoles.length === 1 && !activeRole) {
       setActiveRole(ownedRoles[0]);
     }
   }, [user, ownedRoles, activeRole, setActiveRole]);
 
-  // =========================================================================
-  // 🚀 FUNGSI UTILITY LOGOUT SUPABASE AUTH
-  // =========================================================================
+  useEffect(() => {
+    if (user && user.user_metadata?.full_name && !reviewerName) {
+      setReviewerName(user.user_metadata.full_name);
+    }
+  }, [user, reviewerName]);
+
   const handleLogout = async () => {
     if (!confirm("Apakah Anda yakin ingin keluar dari akun Seapedia?")) return;
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      window.location.reload(); // Refresh halaman untuk membersihkan sisa state
+      window.location.reload();
     } catch (error) {
       alert(`Gagal Logout: ${error.message}`);
     }
   };
 
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!reviewerName.trim() || !comment.trim()) {
+      alert("Harap isi nama peninjau dan teks komentar ulasan.");
+      return;
+    }
+
+    try {
+      setSubmitLoading(true);
+
+      const newReviewItem = {
+        reviewer_name: reviewerName.trim(),
+        rating: Number(rating),
+        comment: comment.trim(),
+      };
+
+      const { data: insertedData, error: insertError } = await supabase
+        .from("app_reviews")
+        .insert([newReviewItem])
+        .select()
+        .single();
+
+      if (insertError) {
+        const fallbackReview = {
+          id: `LOCAL-${Date.now()}`,
+          created_at: new Date().toISOString(),
+          ...newReviewItem,
+        };
+
+        const localReviewsKey = "seapedia_local_reviews";
+        const currentLocalStr = localStorage.getItem(localReviewsKey);
+        const currentLocal = currentLocalStr ? JSON.parse(currentLocalStr) : [];
+
+        currentLocal.unshift(fallbackReview);
+        localStorage.setItem(localReviewsKey, JSON.stringify(currentLocal));
+
+        setReviews((prev) => [fallbackReview, ...prev]);
+      } else if (insertedData) {
+        setReviews((prev) => [insertedData, ...prev]);
+      }
+
+      setComment("");
+      alert(
+        "Ulasan pengalaman Anda berhasil dikirim dan ditambahkan ke daftar testimoni!",
+      );
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FDFDFD] text-[#23263B] font-sans antialiased">
-      {/* 1. ANNOUNCEMENT BAR */}
       <div className="bg-[#0D241F] text-[#F3FDF5] text-xs py-2 px-4 border-b border-emerald-950">
         <div className="container mx-auto flex justify-between items-center overflow-hidden">
           <div className="animate-marquee flex gap-8">
             <span>
-              📢 <strong>Pengumuman Ekosistem SEAPEDIA:</strong> Fitur simulasi
-              otomatis SLA Next-Day diaktifkan untuk pengujian Level 6.
+              <strong>Announcement:</strong> Fitur simulasi otomatis SLA
+              Next-Day diaktifkan untuk pengujian Level 6.
             </span>
           </div>
           <div className="hidden md:block text-[11px] font-mono opacity-80 shrink-0">
-            System Time: 2026.06.13
+            System Time: 2026.06.14
           </div>
         </div>
       </div>
 
-      {/* 2. HEADER / NAVBAR */}
-      <header className="bg-white border-b border-slate-100 sticky top-0 z-50 shadow-xs">
+      <header className="bg-white border-b border-slate-100 sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 lg:px-8 py-4 flex justify-between items-center gap-4">
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-10">
             <button
               onClick={() => navigate("/")}
-              className="text-xl font-black tracking-tight text-[#0D241F] flex items-center gap-2 bg-transparent border-none cursor-pointer"
+              className="text-xl font-black tracking-tight text-[#0D241F] flex items-center gap-1 bg-transparent border-none cursor-pointer"
             >
-              <span className="text-emerald-600">🛒</span> SEAPEDIA
+              <span className="text-emerald-600 font-extrabold">SEA</span>PEDIA
             </button>
-            <nav className="hidden lg:flex items-center gap-6 text-sm font-semibold text-[#4A4E5A]">
-              <div className="cursor-pointer hover:text-emerald-600 flex items-center gap-1">
-                Categories <span className="text-[10px]">▼</span>
-              </div>
-              <div className="cursor-pointer hover:text-emerald-600">Deals</div>
-              <div className="cursor-pointer hover:text-emerald-600">
-                What's New
-              </div>
-              <div className="cursor-pointer hover:text-emerald-600">
-                Delivery
-              </div>
-            </nav>
           </div>
 
           <div className="flex-1 max-w-md relative hidden md:block">
             <input
               type="text"
-              placeholder="Search Product"
-              className="w-full bg-[#F5F6F6] text-xs rounded-full py-2.5 pl-4 pr-10 outline-none border border-transparent focus:border-slate-200"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari produk di Seapedia..."
+              className="w-full bg-[#F5F6F6] text-[13px] rounded-lg py-2.5 pl-4 pr-10 outline-none border border-transparent focus:border-emerald-200 focus:bg-white transition-all font-medium"
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm cursor-pointer">
-              🔍
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm cursor-pointer hover:text-emerald-600 transition-colors">
+              {searchQuery ? (
+                <svg
+                  onClick={() => setSearchQuery("")}
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              )}
             </span>
           </div>
 
-          <div className="flex items-center gap-6 text-sm font-semibold text-[#23263B]">
-            {/* 🚀 AKSI KONDISIONAL AUTENTIKASI SUPABASE AUTH */}
+          <div className="flex items-center gap-8 text-sm font-bold text-[#23263B]">
             {user ? (
-              <div className="flex items-center gap-5">
+              <div className="flex items-center gap-6">
                 <div className="text-right hidden sm:block">
-                  <p className="text-xs font-black text-[#0D241F]">
+                  <p className="text-[11px] font-black text-[#0D241F] leading-tight">
                     {user.user_metadata?.full_name || "User SEAPEDIA"}
                   </p>
-                  <p className="text-[10px] font-mono text-emerald-600 font-bold uppercase tracking-wider mt-0.5">
+                  <p className="text-[9px] font-mono text-emerald-600 font-bold uppercase tracking-widest mt-0.5">
                     {activeRole || "Buyer"}
                   </p>
                 </div>
 
-                {/* Avatar Button Menuju Settings */}
                 <button
                   onClick={() => navigate("/settings")}
                   className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center font-bold text-xs shadow-xs hover:bg-emerald-100 transition cursor-pointer"
@@ -207,61 +229,100 @@ export default function LandingPage() {
                     "U"}
                 </button>
 
-                {/* Tombol Akses Wallet Baru */}
                 <div
                   onClick={() => navigate("/wallet")}
-                  className="flex items-center gap-1 cursor-pointer hover:text-emerald-600"
+                  className="flex flex-col items-center gap-0.5 cursor-pointer hover:text-emerald-600 transition-colors"
                 >
-                  <span className="text-lg">💳</span>
-                  <span className="text-xs hidden lg:inline font-bold">
-                    Wallet
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect width="20" height="14" x="2" y="5" rx="2" />
+                    <line x1="2" x2="22" y1="10" y2="10" />
+                  </svg>
+                  <span className="text-[10px] hidden lg:inline uppercase tracking-tighter">
+                    Dompet
                   </span>
                 </div>
 
-                {/* Tombol Pesanan Saya */}
                 <div
                   onClick={() => navigate("/orders")}
-                  className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-600 relative"
+                  className="flex flex-col items-center gap-0.5 cursor-pointer hover:text-emerald-600 transition-colors"
                 >
-                  <span className="text-lg">📦</span>
-                  <span className="text-xs hidden sm:inline font-bold">
-                    Orders
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                    <path d="m3.3 7 8.7 5 8.7-5" />
+                    <path d="M12 22V12" />
+                  </svg>
+                  <span className="text-[10px] hidden sm:inline uppercase tracking-tighter">
+                    Pesanan
                   </span>
                 </div>
 
-                {/* Tombol Logout Bawaan */}
                 <button
                   onClick={handleLogout}
-                  className="text-red-500 hover:text-red-700 bg-transparent border-none text-xs font-bold font-sans cursor-pointer transition"
+                  className="text-red-500 hover:text-red-700 bg-transparent border-none text-[11px] font-black uppercase tracking-wider cursor-pointer transition"
                 >
-                  Logout
+                  Keluar
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-5">
                 <button
                   onClick={() => navigate("/login")}
-                  className="hover:text-emerald-600 bg-transparent border-none text-sm font-semibold text-[#23263B] cursor-pointer"
+                  className="hover:text-emerald-600 bg-transparent border-none text-sm font-bold text-[#23263B] cursor-pointer transition-colors"
                 >
-                  Login
+                  Masuk
                 </button>
                 <button
                   onClick={() => navigate("/register")}
-                  className="bg-[#0D241F] text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-emerald-950 transition border-none cursor-pointer"
+                  className="bg-[#0D241F] text-white px-5 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-emerald-950 transition shadow-sm border-none cursor-pointer"
                 >
-                  Register
+                  Daftar
                 </button>
               </div>
             )}
 
-            {/* BADGE JUMLAH KERANJANG BELANJA REAL-TIME */}
             <div
               onClick={() => navigate("/cart")}
-              className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-600 relative"
+              className="flex flex-col items-center gap-0.5 cursor-pointer hover:text-emerald-600 relative transition-colors"
             >
-              <span className="text-lg">🛒</span>
-              <span className="text-xs hidden sm:inline">Cart</span>
-              <span className="absolute -top-1.5 left-3 bg-emerald-600 text-white font-mono text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="8" cy="21" r="1" />
+                <circle cx="19" cy="21" r="1" />
+                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+              </svg>
+              <span className="text-[10px] hidden sm:inline uppercase tracking-tighter">
+                + Keranjang
+              </span>
+              <span className="absolute -top-1 -right-1 bg-emerald-600 text-white font-mono text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold border-2 border-white">
                 {getCartCount()}
               </span>
             </div>
@@ -269,25 +330,46 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* 4. BARISAN FILTER TOMBOL */}
       <section className="container mx-auto px-4 lg:px-8 pt-8 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2.5 text-xs font-semibold">
-          <button className="bg-[#EBF4F1] text-emerald-800 px-6 py-2.5 rounded-full border border-emerald-100 font-bold">
-            All Products 📦
+          <button className="bg-[#EBF4F1] text-emerald-800 px-6 py-2.5 rounded-full border border-emerald-100 font-black uppercase tracking-wider flex items-center gap-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m7.5 4.27 9 5.15" />
+              <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+              <path d="m3.3 7 8.7 5 8.7-5" />
+              <path d="M12 22V12" />
+            </svg>
+            Semua Produk
           </button>
         </div>
       </section>
 
-      {/* 5. PRODUCT GRID CATALOGUE */}
       <section className="container mx-auto px-4 lg:px-8 py-8">
         <h2 className="text-xl md:text-2xl font-black text-[#0D241F] mb-6">
-          Happy Shopping!
+          {searchQuery.trim() 
+            ? `Hasil Pencarian untuk "${searchQuery}"` 
+            : "Selamat Berbelanja!"}
         </h2>
 
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-700"></div>
           </div>
+        ) : products.length === 0 ? (
+          <p className="text-xs text-slate-400 font-medium py-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            Belum ada produk riil yang tersedia di database Anda. Silakan
+            tambahkan katalog produk melalui Merchant Dashboard.
+          </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {products.map((product) => {
@@ -324,9 +406,22 @@ export default function LandingPage() {
 
                     <button
                       onClick={(e) => e.stopPropagation()}
-                      className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400 hover:text-red-500 transition text-sm border-none cursor-pointer"
+                      className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400 hover:text-red-500 transition border-none cursor-pointer group/fav"
                     >
-                      🤍
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="group-hover/fav:fill-red-500 transition-colors"
+                      >
+                        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                      </svg>
                     </button>
                   </div>
 
@@ -348,14 +443,13 @@ export default function LandingPage() {
                       "No description provided for this product catalogue entry."}
                   </p>
 
-                  <div className="flex items-center gap-1 text-amber-400 text-xs mt-1.5">
-                    {"★".repeat(5)}
-                    <span className="text-slate-400 text-[10px] ml-1 font-semibold">
-                      (121)
+                  <div className="flex items-center gap-1 text-amber-500 text-[11px] mt-1.5 font-bold">
+                    ★★★★★
+                    <span className="text-slate-400 text-[10px] ml-1 font-bold">
+                      (0)
                     </span>
                   </div>
 
-                  {/* ACTION BUTTONS */}
                   <div className="mt-4 flex gap-2">
                     <button
                       onClick={(e) => {
@@ -384,39 +478,113 @@ export default function LandingPage() {
         )}
       </section>
 
-      {/* 7. PUBLIC APPLICATION REVIEWS */}
-      <section className="container mx-auto px-4 lg:px-8 py-8 border-t border-slate-100">
-        <h2 className="text-xl md:text-2xl font-black text-[#0D241F] mb-6">
-          Application Feedback
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {reviews.map((review) => (
-            <div
-              key={review.id}
-              className="bg-[#F5F6F6] p-4 rounded-[16px] border border-slate-100 flex flex-col justify-between"
-            >
-              <p className="text-slate-600 text-xs italic">
-                "{review.comment}"
-              </p>
-              <div className="flex justify-between items-center mt-3 pt-2 border-t border-slate-200/50">
-                <span className="text-[11px] font-bold text-[#23263B]">
-                  {review.reviewer_name}
-                </span>
-                <span className="text-amber-400 text-xs">
-                  {"★".repeat(review.rating)}
-                </span>
+      <section className="container mx-auto px-4 lg:px-8 py-10 border-t border-slate-100">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
+          <div className="bg-white border border-slate-200/60 p-6 rounded-2xl shadow-2xs">
+            <h3 className="text-base font-extrabold text-[#0D241F] uppercase tracking-wider mb-1">
+              Kirim Ulasan Aplikasi
+            </h3>
+            <p className="text-slate-400 text-[11px] mb-4 leading-normal">
+              Bagikan pengalaman eksplorasi ekosistem multi-dashboard Anda
+              langsung tanpa syarat transaksi.
+            </p>
+
+            <form onSubmit={handleSubmitReview} className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  Nama Peninjau
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={reviewerName}
+                  onChange={(e) => setReviewerName(e.target.value)}
+                  placeholder="Masukkan nama Anda"
+                  className="w-full bg-[#F5F6F6] border border-transparent rounded-xl py-2 px-3 text-xs outline-none focus:bg-white focus:border-emerald-600 transition"
+                />
               </div>
-            </div>
-          ))}
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  App Rating
+                </label>
+                <select
+                  value={rating}
+                  onChange={(e) => setRating(Number(e.target.value))}
+                  className="w-full bg-[#F5F6F6] border border-transparent rounded-xl py-2.5 px-3 text-xs outline-none focus:bg-white focus:border-emerald-600 transition cursor-pointer font-bold text-slate-700 appearance-none"
+                >
+                  <option value="5">★★★★★ (5 - Excellent)</option>
+                  <option value="4">★★★★ (4 - Very Good)</option>
+                  <option value="3">★★★ (3 - Good)</option>
+                  <option value="2">★★ (2 - Fair)</option>
+                  <option value="1">★ (1 - Poor)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  Teks Komentar
+                </label>
+                <textarea
+                  rows="3"
+                  required
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Tulis kritik, komentar, atau saran pengalaman fitur di sini..."
+                  className="w-full bg-[#F5F6F6] border border-transparent rounded-xl py-2 px-3 text-xs outline-none focus:bg-white focus:border-emerald-600 transition resize-none leading-relaxed"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitLoading}
+                className="w-full bg-[#0D241F] hover:bg-emerald-950 text-white font-bold text-xs py-2.5 rounded-xl transition shadow-xs border-none cursor-pointer disabled:bg-slate-300"
+              >
+                {submitLoading ? "Mengirim Ulasan..." : "Kirim Ulasan Sekarang"}
+              </button>
+            </form>
+          </div>
+
+          <div className="lg:col-span-2">
+            <h3 className="text-base font-extrabold text-[#0D241F] uppercase tracking-wider mb-4">
+              Application Feedback ({reviews.length})
+            </h3>
+            {reviews.length === 0 ? (
+              <p className="text-xs text-slate-400 font-medium py-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                Belum ada feedback yang dikirimkan. Jadilah yang pertama
+                memberikan ulasan menggunakan form di samping!
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[420px] overflow-y-auto pr-2">
+                {reviews.map((review) => (
+                  <div
+                    key={review.id}
+                    className="bg-[#F5F6F6] p-4 rounded-[16px] border border-slate-100 flex flex-col justify-between shadow-3xs"
+                  >
+                    <p className="text-slate-600 text-xs italic leading-relaxed">
+                      "{review.comment}"
+                    </p>
+                    <div className="flex justify-between items-center mt-3 pt-2 border-t border-slate-200/50">
+                      <span className="text-[11px] font-black text-[#0D241F] uppercase tracking-wider">
+                        {review.reviewer_name}
+                      </span>
+                      <span className="text-amber-500 text-[10px] font-bold tracking-widest">
+                        {"★".repeat(review.rating)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
-      {/* 8. FOOTER */}
       <footer className="bg-white border-t border-slate-200 pt-12 pb-6 mt-12">
         <div className="container mx-auto px-4 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8 text-xs text-slate-500">
           <div className="md:pr-6">
             <h3 className="text-sm font-black text-[#0D241F] mb-3 flex items-center gap-1">
-              <span className="text-emerald-600">🛒</span> Shopcart
+              SHOPCART
             </h3>
             <p className="leading-relaxed">
               Experience a frictionless, high-end retail environment with the

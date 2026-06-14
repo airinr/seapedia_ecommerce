@@ -5,43 +5,45 @@ import { supabase } from "../../lib/supabaseClient";
 export default function SellerOrdersPage() {
   const navigate = useNavigate();
   const { orders, fetchSellerData, user } = useOutletContext();
-  const [actionLoading, setActionLoading] = useState(false);
+  const [loadingOrderId, setLoadingOrderId] = useState(null);
 
-  // 🚀 FUNGSI HELPER: Memastikan ekstraksi gambar pertama dari tipe data text[] aman dari error parsing string/array
   const parseImageUrl = (rawUrlData) => {
     const fallbackPlaceholder =
       "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=150";
 
     if (!rawUrlData) return fallbackPlaceholder;
 
-    // Kasus 1: Jika data sudah otomatis berupa Array []
-    if (Array.isArray(rawUrlData)) {
-      return rawUrlData.length > 0 ? rawUrlData[0] : fallbackPlaceholder;
-    }
+    let imagePath = "";
 
-    // Kasus 2: Jika data bertipe text[] terbaca sebagai string mentah '["https://..."]'
-    if (typeof rawUrlData === "string") {
+    if (Array.isArray(rawUrlData)) {
+      imagePath = rawUrlData.length > 0 ? rawUrlData[0] : "";
+    } else if (typeof rawUrlData === "string") {
       const trimmed = rawUrlData.trim();
       if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
         try {
           const parsedArray = JSON.parse(trimmed);
           if (Array.isArray(parsedArray) && parsedArray.length > 0) {
-            return parsedArray[0];
+            imagePath = parsedArray[0];
           }
         } catch (e) {
-          console.error("Gagal parse string text[] array:", e);
+          imagePath = trimmed;
+          console.log(e);
         }
+      } else {
+        imagePath = trimmed;
       }
-      // Kasus 3: Jika ternyata datanya hanya string URL biasa tunggal tanpa bungkus array
-      return trimmed || fallbackPlaceholder;
     }
 
-    return fallbackPlaceholder;
+    const cleanUrl = String(imagePath)
+      // eslint-disable-next-line no-useless-escape
+      .replace(/[\[\]{}""']/g, "")
+      .trim();
+    return cleanUrl || fallbackPlaceholder;
   };
 
   const handleUpdateOrderStatus = async (orderId) => {
     try {
-      setActionLoading(true);
+      setLoadingOrderId(orderId);
 
       const targetStatus = "Menunggu Pengirim";
 
@@ -61,19 +63,18 @@ export default function SellerOrdersPage() {
       ]);
 
       alert(
-        `Sukses! Pesanan telah diteruskan ke kurir dengan status: [${targetStatus}]`,
+        `Sukses! Pesanan telah siap dan dialihkan ke status: [${targetStatus}]`,
       );
-      fetchSellerData();
+      await fetchSellerData();
     } catch (err) {
-      alert(`Gagal memperbarui status: ${err.message}`);
+      alert(`Gagal memperbarui status (Error 403 RLS): ${err.message}`);
     } finally {
-      setActionLoading(false);
+      setLoadingOrderId(null);
     }
   };
 
   return (
     <div className="animate-in fade-in duration-500">
-      {/* SECTION HEADER */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-xl font-extrabold text-[#0D241F] tracking-tight">
@@ -86,7 +87,6 @@ export default function SellerOrdersPage() {
         </div>
       </div>
 
-      {/* ORDERS WRAPPER BOX */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs">
         {!orders || orders.length === 0 ? (
           <div className="text-center py-20 flex flex-col items-center justify-center">
@@ -104,7 +104,6 @@ export default function SellerOrdersPage() {
               const firstItem = itemsArray[0] || {};
               const productMaster = firstItem.products || {};
 
-              // Ekstraksi nama produk live dari database master
               const firstItemName =
                 productMaster.product_name ||
                 firstItem.product_name ||
@@ -113,7 +112,6 @@ export default function SellerOrdersPage() {
                   ? `Paket Pesanan (${itemsArray.length} Item)`
                   : "Produk Eksklusif Seapedia");
 
-              // eslint-disable-next-line no-unused-vars
               const displayImage = parseImageUrl(
                 productMaster.image_url || firstItem.image_url,
               );
@@ -123,15 +121,9 @@ export default function SellerOrdersPage() {
                 order.quantity ||
                 1;
 
-              // Normalisasi string status (Case-Insensitive)
-              const statusStr = (order.current_status || "")
-                .toLowerCase()
-                .replace(/\s+/g, "");
-              const isPacking = statusStr.includes("dikemas");
-              const isWaitingCourier =
-                statusStr.includes("pengirim") ||
-                statusStr.includes("kurir") ||
-                statusStr.includes("dikirim");
+              const rawStatus = (order.current_status || "").trim();
+              const isPacking = rawStatus === "Sedang Dikemas";
+              const isWaitingCourier = rawStatus === "Menunggu Pengirim";
 
               return (
                 <div
@@ -139,41 +131,9 @@ export default function SellerOrdersPage() {
                   className="p-5 bg-[#F8F9FA] rounded-xl border border-slate-200/60 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition hover:border-emerald-600/30 hover:bg-white"
                 >
                   <div className="flex items-center gap-4 w-full md:w-auto">
-                    {/* MINI CONTAINER IMAGE */}
                     <div className="w-14 h-14 bg-white border border-slate-200/60 rounded-xl overflow-hidden flex items-center justify-center p-1 shrink-0 shadow-3xs">
                       <img
-                        src={(() => {
-                          const rawUrlData =
-                            productMaster.image_url || firstItem.image_url;
-                          const fallbackPlaceholder =
-                            "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=150";
-
-                          if (!rawUrlData) return fallbackPlaceholder;
-
-                          let imagePath = Array.isArray(rawUrlData)
-                            ? rawUrlData[0]
-                            : rawUrlData;
-                          const cleanPath = String(imagePath)
-                            // eslint-disable-next-line no-useless-escape
-                            .replace(/[\[\]{}""']/g, "")
-                            .trim();
-
-                          if (!cleanPath) return fallbackPlaceholder;
-
-                          if (
-                            cleanPath.startsWith("http://") ||
-                            cleanPath.startsWith("https://")
-                          ) {
-                            return cleanPath;
-                          }
-
-                          const supabaseUrl =
-                            supabase.supabaseUrl ||
-                            "https://kuemkydndytxahualrw.supabase.co";
-                          const NAMA_BUCKET = "products";
-
-                          return `${supabaseUrl}/storage/v1/object/public/${NAMA_BUCKET}/${cleanPath}`;
-                        })()}
+                        src={displayImage}
                         alt={firstItemName}
                         className="max-w-full max-h-full object-contain"
                         onError={(e) => {
@@ -219,7 +179,6 @@ export default function SellerOrdersPage() {
                     </div>
                   </div>
 
-                  {/* ACTION LAYOUT CONTROLLER */}
                   <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-2.5 w-full md:w-auto border-t md:border-none border-slate-200/60 pt-3 md:pt-0 shrink-0">
                     <span
                       className={`px-3 py-1 rounded text-[10px] font-black uppercase tracking-wider ${
@@ -243,11 +202,13 @@ export default function SellerOrdersPage() {
 
                       {isPacking && (
                         <button
-                          disabled={actionLoading}
+                          disabled={loadingOrderId !== null}
                           onClick={() => handleUpdateOrderStatus(order.id)}
                           className="px-4 py-2 bg-[#0D241F] hover:bg-emerald-950 text-white text-[11px] font-bold rounded-lg transition cursor-pointer border-none shadow-sm disabled:opacity-40 whitespace-nowrap"
                         >
-                          {actionLoading ? "Memproses..." : "Siap Kirim"}
+                          {loadingOrderId === order.id
+                            ? "Memproses..."
+                            : "Siap Kirim"}
                         </button>
                       )}
                     </div>
