@@ -1,16 +1,21 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useState, useEffect } from "react";
+// eslint-disable-next-line no-unused-vars
+import { useState, useEffect, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function SellerDashboard() {
-  const { store, products, orders, revenue, fetchSellerData } =
+  // eslint-disable-next-line no-unused-vars
+  const { store, products, orders, revenue, fetchSellerData, user } =
     useOutletContext();
   const [actionLoading, setActionLoading] = useState(false);
 
   const [storeName, setStoreName] = useState("");
   const [storeDesc, setStoreDesc] = useState("");
   const [storeAddress, setStoreAddress] = useState("");
+
+  // 🚀 STATE BARU: Untuk sinkronisasi jumlah kasus dari tabel order_returns
+  const [returnsCount, setReturnsCount] = useState(0);
 
   useEffect(() => {
     if (store) {
@@ -19,6 +24,27 @@ export default function SellerDashboard() {
       setStoreAddress(store.address || "");
     }
   }, [store]);
+
+  // 🚀 FETCH INDEPENDEN: Hitung berapa banyak berkas pengembalian aktif di order_returns
+  useEffect(() => {
+    async function fetchReturnsCount() {
+      try {
+        const { count, error } = await supabase
+          .from("order_returns")
+          .select("*", { count: "exact", head: true });
+
+        if (error) throw error;
+        setReturnsCount(count || 0);
+      } catch (err) {
+        console.error(
+          "Gagal memuat statistik counter order_returns:",
+          err.message,
+        );
+      }
+    }
+
+    fetchReturnsCount();
+  }, [orders]);
 
   const parseImageUrl = (rawUrlData) => {
     const fallbackPlaceholder =
@@ -38,9 +64,9 @@ export default function SellerDashboard() {
           if (Array.isArray(parsedArray) && parsedArray.length > 0) {
             imagePath = parsedArray[0];
           }
-          // eslint-disable-next-line no-unused-vars
         } catch (e) {
           imagePath = trimmed;
+          console.log(e);
         }
       } else {
         imagePath = trimmed;
@@ -51,11 +77,9 @@ export default function SellerDashboard() {
       // eslint-disable-next-line no-useless-escape
       .replace(/[\[\]{}""']/g, "")
       .trim();
-
     return cleanUrl || fallbackPlaceholder;
   };
 
-  // 🚀 PERBAIKAN UTAMA: Integrasi mutasi pembaruan profil toko langsung ke database Supabase
   const handleUpdateStore = async (e) => {
     e.preventDefault();
     if (!store?.id) return;
@@ -75,12 +99,24 @@ export default function SellerDashboard() {
       if (error) throw error;
 
       alert("Profil toko berhasil diperbarui di server Supabase!");
-      fetchSellerData(); // Memicu re-fetch data context induk agar UI sinkron serentak
+      fetchSellerData();
     } catch (err) {
       alert(`Gagal memperbarui informasi toko: ${err.message}`);
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // 📊 FILTERING MANIFEST UNTUK STRUKTUR BADGE WARNA STATUS KHUSUS RETUR
+  const getStatusBadgeStyle = (status) => {
+    const s = (status || "").trim();
+    if (s === "Dikembalikan" || s.toLowerCase().includes("retur")) {
+      return "bg-red-50 text-red-700 border border-red-200/40";
+    }
+    if (s.toLowerCase().includes("kemas")) {
+      return "bg-amber-50 text-amber-800 border border-amber-200/40";
+    }
+    return "bg-emerald-50 text-emerald-800 border border-emerald-200/40";
   };
 
   return (
@@ -97,12 +133,13 @@ export default function SellerDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-[#0D241F] text-white p-6 rounded-2xl shadow-sm relative overflow-hidden">
-          <p className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+      {/* KARTU STATISTIK UTAMA */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-[#0D241F] text-white p-5 rounded-2xl shadow-sm relative overflow-hidden col-span-2 lg:col-span-1">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">
             Total Omset Pendapatan
           </p>
-          <h2 className="text-3xl font-black font-mono mt-2">
+          <h2 className="text-2xl !text-white font-mono mt-2">
             {new Intl.NumberFormat("id-ID", {
               style: "currency",
               currency: "IDR",
@@ -110,30 +147,45 @@ export default function SellerDashboard() {
             }).format(revenue)}
           </h2>
         </div>
-        <div className="bg-white border border-slate-200/60 p-6 rounded-2xl shadow-2xs">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Total Katalog Produk
+
+        <div className="bg-white border border-slate-200/60 p-5 rounded-2xl shadow-2xs">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Katalog Produk
           </p>
-          <h2 className="text-3xl font-black font-mono text-[#0D241F] mt-2">
+          <h2 className="text-2xl font-black font-mono text-[#0D241F] mt-2">
             {products?.length || 0}{" "}
-            <span className="text-sm font-sans font-bold text-slate-400">
+            <span className="text-[10px] font-sans font-bold text-slate-300 uppercase">
               Items
             </span>
           </h2>
         </div>
-        <div className="bg-white border border-slate-200/60 p-6 rounded-2xl shadow-2xs">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Pesanan Masuk
+
+        <div className="bg-white border border-slate-200/60 p-5 rounded-2xl shadow-2xs">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Perlu Dikemas
           </p>
-          <h2 className="text-3xl font-black font-mono text-[#0D241F] mt-2">
+          <h2 className="text-2xl font-black font-mono text-[#0D241F] mt-2">
             {orders?.filter((o) => {
               const status = (o.current_status || "")
                 .toLowerCase()
                 .replace(/\s+/g, "");
               return status === "sedangdikemas" || status === "dikemas";
             }).length || 0}{" "}
-            <span className="text-sm font-sans font-bold text-amber-600">
-              Perlu Dikemas
+            <span className="text-[10px] font-sans font-bold text-amber-600 uppercase">
+              Antrean
+            </span>
+          </h2>
+        </div>
+
+        {/* 🚀 PERBAIKAN: Menggunakan returnsCount yang bersumber langsung dari tabel order_returns */}
+        <div className="bg-white border border-slate-200/60 p-5 rounded-2xl shadow-2xs">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Pesanan Retur
+          </p>
+          <h2 className="text-2xl font-black font-mono text-red-600 mt-2">
+            {returnsCount}{" "}
+            <span className="text-[10px] font-sans font-bold text-slate-300 uppercase">
+              Kasus
             </span>
           </h2>
         </div>
@@ -204,15 +256,10 @@ export default function SellerDashboard() {
                           </p>
                         </div>
                       </div>
+
+                      {/* Lencana status yang dinamis mendukung pewarnaan retur */}
                       <span
-                        className={`px-2.5 py-0.5 rounded text-[9px] font-black uppercase shrink-0 ${
-                          (order.current_status || "")
-                            .toLowerCase()
-                            .replace(/\s+/g, "")
-                            .includes("dikemas")
-                            ? "bg-amber-50 text-amber-800 border border-amber-200/40"
-                            : "bg-emerald-50 text-emerald-800 border border-emerald-200/40"
-                        }`}
+                        className={`px-2.5 py-0.5 rounded text-[9px] font-black uppercase shrink-0 ${getStatusBadgeStyle(order.current_status)}`}
                       >
                         {order.current_status || "Pending"}
                       </span>
@@ -224,6 +271,7 @@ export default function SellerDashboard() {
           </div>
         </div>
 
+        {/* FORM PANEL MANAJEMEN PROFIL TOKO */}
         <div className="space-y-6">
           <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs">
             <h3 className="font-extrabold text-sm text-[#0D241F] uppercase tracking-wider mb-3 border-b border-slate-100 pb-2">

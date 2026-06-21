@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { supabase } from "../../lib/supabaseClient";
@@ -14,11 +14,20 @@ export default function CartPage() {
     getCartCount,
     clearCart,
   } = useCart();
+
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [deliveryMethod, setDeliveryMethod] = useState("Regular");
+
+  // 🎟️ STATE VOUCHER (PENCUT KODE MANUAL)
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [voucherError, setVoucherError] = useState("");
+
+  // 🏷️ STATE PROMO (DROPDOWN LIST PLATFORM)
+  const [availablePromos, setAvailablePromos] = useState([]);
+  const [selectedPromoId, setSelectedPromoId] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoLoading, setPromoLoading] = useState(false);
 
   const deliveryRates = {
     Instant: 25000,
@@ -27,18 +36,75 @@ export default function CartPage() {
   };
 
   const totalCartPrice = getCartTotal();
-  const discountAmount = appliedVoucher ? appliedVoucher.value_amount : 0;
+  const voucherDiscount = appliedVoucher
+    ? Number(appliedVoucher.value_amount || 0)
+    : 0;
+  const promoDiscount = appliedPromo
+    ? Number(appliedPromo.value_amount || 0)
+    : 0;
+  const totalDiscountAmount = voucherDiscount + promoDiscount;
+
   const currentDeliveryFee =
     cartItems.length > 0 ? deliveryRates[deliveryMethod] : 0;
-  const taxAmount = Math.round((totalCartPrice - discountAmount) * 0.12);
+  const taxAmount = Math.round(
+    Math.max(0, totalCartPrice - totalDiscountAmount) * 0.12,
+  );
   const grandTotal = Math.max(
     0,
-    totalCartPrice - discountAmount + currentDeliveryFee + taxAmount,
+    totalCartPrice - totalDiscountAmount + currentDeliveryFee + taxAmount,
   );
 
   const uniqueStoreIds = [...new Set(cartItems.map((item) => item.store_id))];
   const isMultiStore = uniqueStoreIds.length > 1;
 
+  // =========================================================================
+  // 🔄 1. AMBIL DATA PROMO OTOMATIS DARI TABEL DISCOUNTS
+  // =========================================================================
+  useEffect(() => {
+    async function fetchPlatformPromos() {
+      try {
+        setPromoLoading(true);
+        const { data, error } = await supabase
+          .from("discounts")
+          .select("*")
+          .eq("type", "Promo") // Murni mengambil data baris bertipe Promo
+          .order("created_at", { ascending: false });
+
+        if (!error && data) {
+          // Menyaring item promo yang masih berlaku dan kuotanya di atas 0
+          const validPromos = data.filter(
+            (p) =>
+              new Date(p.expiry_date) >= new Date() &&
+              (p.remaining_usage ?? 0) > 0,
+          );
+          setAvailablePromos(validPromos);
+        }
+      } catch (err) {
+        console.error("Gagal memuat kampanye promo platform:", err);
+      } finally {
+        setPromoLoading(false);
+      }
+    }
+    fetchPlatformPromos();
+  }, []);
+
+  // Handler pergantian pilihan komponen dropdown Promo
+  const handlePromoChange = (e) => {
+    const promoId = e.target.value;
+    setSelectedPromoId(promoId);
+    if (!promoId) {
+      setAppliedPromo(null);
+      return;
+    }
+    const selectedObj = availablePromos.find((p) => p.id === promoId);
+    if (selectedObj) {
+      setAppliedPromo(selectedObj);
+    }
+  };
+
+  // =========================================================================
+  // 🎯 2. COCOKKAN KODE VOUCHER DENGAN DATA DI TABEL DISCOUNTS
+  // =========================================================================
   const handleApplyVoucher = async () => {
     if (!voucherCode.trim()) return;
     setVoucherError("");
@@ -51,44 +117,40 @@ export default function CartPage() {
     }
 
     try {
-      const storeId = uniqueStoreIds[0];
+      // Mencari kode unik yang diinput pembeli di dalam baris bertipe 'Voucher'
       const { data, error } = await supabase
         .from("discounts")
         .select("*")
-        .eq("store_id", storeId)
+        .eq("type", "Voucher")
         .eq("code", voucherCode.toUpperCase().trim())
-        .single();
+        .maybeSingle();
 
-      let voucher = data;
-      if (error) {
-        const localVouchers = JSON.parse(
-          localStorage.getItem(`vouchers_${storeId}`) || "[]",
-        );
-        voucher = localVouchers.find(
-          (v) => v.code === voucherCode.toUpperCase().trim(),
-        );
-      }
-
-      if (!voucher) {
-        setVoucherError("Kode voucher tidak valid.");
+      if (error || !data) {
+        setVoucherError("Kode voucher tidak terdaftar atau tidak valid.");
         return;
       }
 
-      if (new Date(voucher.expiry_date) < new Date()) {
-        setVoucherError("Voucher telah kedaluwarsa.");
+      // Validasi waktu kedaluwarsa dokumen diskon
+      if (new Date(data.expiry_date) < new Date()) {
+        setVoucherError("Voucher ini sudah kedaluwarsa.");
         return;
       }
 
-      if ((voucher.remaining_usage ?? 0) <= 0) {
-        setVoucherError("Batas pemakaian voucher telah habis.");
+      // Validasi sisa kuota pemakaian pembuat voucher
+      if ((data.remaining_usage ?? 0) <= 0) {
+        setVoucherError("Kuota pemakaian kode voucher ini sudah habis.");
         return;
       }
 
-      setAppliedVoucher(voucher);
+      setAppliedVoucher(data);
       setVoucherCode("");
-      alert(`Voucher "${voucher.code}" berhasil dipasang!`);
+      alert(
+        `Voucher "${data.code}" senilai Rp ${Number(data.value_amount).toLocaleString()} berhasil dipasang!`,
+      );
     } catch (err) {
-      setVoucherError("Terjadi kesalahan saat validasi voucher.");
+      setVoucherError(
+        "Terjadi hambatan inter koneksi saat memvalidasi voucher.",
+      );
       console.log(err);
     }
   };
@@ -134,12 +196,13 @@ export default function CartPage() {
 
       if (currentDbBalance < grandTotal) {
         alert(
-          `Saldo Dompet Anda (Rp ${new Intl.NumberFormat("id-ID").format(currentDbBalance)}) tidak mencukupi untuk membayar tagihan sebesar Rp ${new Intl.NumberFormat("id-ID").format(grandTotal)}. Silakan melakukan Top-Up.`,
+          `Saldo Dompet Anda tidak mencukupi untuk membayar total tagihan sebesar Rp ${new Intl.NumberFormat("id-ID").format(grandTotal)}.`,
         );
         navigate("/wallet");
         return;
       }
 
+      // 💳 POTONG SALDO WALLET USER
       const newBalance = currentDbBalance - grandTotal;
       const { error: updateProfileError } = await supabase
         .from("profiles")
@@ -148,30 +211,23 @@ export default function CartPage() {
 
       if (updateProfileError)
         throw new Error(
-          `Gagal memotong saldo wallet: ${updateProfileError.message}`,
+          `Gagal mendebit saldo dompet: ${updateProfileError.message}`,
         );
 
-      // 🚀 PROSES BARU: Masukkan data log transaksi pembayaran langsung ke tabel wallet_transactions Supabase
+      // 📝 CATAT TRANSAKSI DI TABEL WALLET_TRANSACTIONS
       const txDescription = `Pembayaran pesanan toko sebanyak ${getCartCount()} item`;
-      const { error: walletTxError } = await supabase
-        .from("wallet_transactions")
-        .insert([
-          {
-            user_id: authUser.id,
-            type: "PAYMENT",
-            amount: grandTotal,
-            description: txDescription,
-          },
-        ]);
+      await supabase.from("wallet_transactions").insert([
+        {
+          user_id: authUser.id,
+          type: "PAYMENT",
+          amount: grandTotal,
+          description: txDescription,
+        },
+      ]);
 
-      if (walletTxError)
-        console.error(
-          "Gagal mencatat mutasi riwayat transaksi ke Supabase:",
-          walletTxError.message,
-        );
-
+      // 📉 UPDATE SISA KUOTA KEDUA DISKON DI TABEL DISCOUNTS JIKA DIKLAIM USER
       if (appliedVoucher) {
-        const { error: voucherUpdateError } = await supabase
+        await supabase
           .from("discounts")
           .update({
             remaining_usage: Math.max(
@@ -180,28 +236,21 @@ export default function CartPage() {
             ),
           })
           .eq("id", appliedVoucher.id);
-
-        if (voucherUpdateError) {
-          const storeId = uniqueStoreIds[0];
-          const localVouchers = JSON.parse(
-            localStorage.getItem(`vouchers_${storeId}`) || "[]",
-          );
-          const idx = localVouchers.findIndex(
-            (v) => v.id === appliedVoucher.id,
-          );
-          if (idx !== -1) {
-            localVouchers[idx].remaining_usage = Math.max(
-              0,
-              (localVouchers[idx].remaining_usage ?? 1) - 1,
-            );
-            localStorage.setItem(
-              `vouchers_${storeId}`,
-              JSON.stringify(localVouchers),
-            );
-          }
-        }
       }
 
+      if (appliedPromo) {
+        await supabase
+          .from("discounts")
+          .update({
+            remaining_usage: Math.max(
+              0,
+              (appliedPromo.remaining_usage ?? 1) - 1,
+            ),
+          })
+          .eq("id", appliedPromo.id);
+      }
+
+      // SINKRONISASI MANIFES LOKAL WALLET FALLBACK
       const walletKey = `seapedia_wallet_${authUser.id}`;
       const walletStr = localStorage.getItem(walletKey);
       let localWalletData = walletStr
@@ -221,6 +270,7 @@ export default function CartPage() {
       const initialStatus = "Sedang Dikemas";
       const defaultAddress = "Alamat Pengiriman Utama Pembeli";
 
+      // KUNCI NOTA INDUK TABEL ORDERS
       const { data: insertedOrder, error: masterOrderError } = await supabase
         .from("orders")
         .insert([
@@ -228,7 +278,7 @@ export default function CartPage() {
             buyer_id: authUser.id,
             store_id: storeId,
             subtotal: Number(totalCartPrice),
-            discount_amount: Number(discountAmount),
+            discount_amount: Number(totalDiscountAmount),
             delivery_fee: Number(currentDeliveryFee),
             tax_amount: Number(taxAmount),
             final_total: Number(grandTotal),
@@ -243,37 +293,31 @@ export default function CartPage() {
       if (masterOrderError) throw masterOrderError;
       const newOrderId = insertedOrder.id;
 
+      // KUNCI BREAKDOWN ITEM MENU TABEL ORDER_ITEMS
       for (const item of cartItems) {
-        const { error: itemInsertError } = await supabase
-          .from("order_items")
-          .insert([
-            {
-              order_id: newOrderId,
-              product_id: item.id,
-              product_name: item.product_name,
-              price: Number(item.price),
-              quantity: Number(item.quantity),
-            },
-          ]);
-
-        if (itemInsertError) throw itemInsertError;
-      }
-
-      const { error: historyError } = await supabase
-        .from("order_status_histories")
-        .insert([
+        await supabase.from("order_items").insert([
           {
             order_id: newOrderId,
-            status: initialStatus,
-            changed_by: authUser.id,
+            product_id: item.id,
+            product_name: item.product_name,
+            price: Number(item.price),
+            quantity: Number(item.quantity),
           },
         ]);
+      }
 
-      if (historyError) throw historyError;
+      // KUNCI LOG HISTORIES PERUBAHAN MANIFES
+      await supabase.from("order_status_histories").insert([
+        {
+          order_id: newOrderId,
+          status: initialStatus,
+          changed_by: authUser.id,
+        },
+      ]);
 
       clearCart();
       alert(
-        "Selamat! Checkout berhasil diproses dengan PPN 12% dan kurir opsi pilihan Anda.",
+        "Selamat! Checkout berhasil diproses dengan akumulasi potongan dari tabel discounts.",
       );
       navigate("/");
     } catch (error) {
@@ -286,6 +330,7 @@ export default function CartPage() {
   return (
     <div className="p-6 md:p-10 max-w-5xl mx-auto">
       <div className="flex flex-col lg:flex-row gap-10">
+        {/* PANEL DAFTAR BARANG DI KERANJANG */}
         <div className="flex-1 space-y-6">
           <h1 className="text-xl font-extrabold text-[#0D241F] tracking-tight">
             Keranjang Belanja ({getCartCount()} Item)
@@ -295,8 +340,7 @@ export default function CartPage() {
             <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl text-xs font-semibold leading-relaxed animate-pulse">
               Peringatan: Keranjang Anda berisi produk dari toko yang berbeda.
               Sesuai kebijakan Single-Store Checkout, Anda wajib menyelesaikan
-              pesanan per satu toko secara bergantian. Harap sisakan produk dari
-              satu toko saja untuk melanjutkan pembayaran.
+              pesanan per satu toko secara bergantian.
             </div>
           )}
 
@@ -307,7 +351,7 @@ export default function CartPage() {
               </p>
               <button
                 onClick={() => navigate("/")}
-                className="bg-[#0D241F] text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-xs hover:bg-emerald-950 transition border-none cursor-pointer"
+                className="bg-[#0D241F] text-white px-6 py-2.5 rounded-xl text-xs font-bold hover:bg-emerald-950 transition border-none cursor-pointer"
               >
                 Mulai Belanja Sekarang
               </button>
@@ -330,7 +374,6 @@ export default function CartPage() {
                       className="max-w-full max-h-full object-contain"
                     />
                   </div>
-
                   <div className="flex-1 min-w-0">
                     <h4 className="font-bold text-[#0D241F] text-sm truncate">
                       {item.product_name}
@@ -342,7 +385,6 @@ export default function CartPage() {
                         maximumFractionDigits: 0,
                       }).format(item.price)}
                     </p>
-
                     <div className="flex items-center gap-4 mt-3">
                       <div className="flex items-center bg-slate-100 rounded-lg px-1.5 py-0.5 gap-2">
                         <button
@@ -415,6 +457,7 @@ export default function CartPage() {
           )}
         </div>
 
+        {/* STICKY SIDEBAR RINGKASAN TAGIHAN & KLAIM DISCOUNTS */}
         {cartItems.length > 0 && (
           <div className="w-full lg:w-80">
             <div className="bg-[#0D241F] text-white p-6 rounded-2xl shadow-sm sticky top-24">
@@ -422,10 +465,11 @@ export default function CartPage() {
                 Ringkasan Belanja
               </h3>
 
-              <div className="space-y-3 border-b border-white/10 pb-4 mb-4 text-xs font-medium">
-                <div className="py-2">
+              <div className="space-y-4 border-b border-white/10 pb-4 mb-4 text-xs font-medium">
+                {/* INTERFACES A: COCOKKAN KODE VOUCHER */}
+                <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
-                    Voucher Toko
+                    Klaim Voucher Platform / Toko
                   </label>
                   {!appliedVoucher ? (
                     <div className="flex gap-2">
@@ -433,14 +477,14 @@ export default function CartPage() {
                         type="text"
                         value={voucherCode}
                         onChange={(e) => setVoucherCode(e.target.value)}
-                        placeholder="Masukkan kode promo"
+                        placeholder="Masukkan kode voucher"
                         className="flex-1 bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-[11px] font-bold text-white outline-none focus:border-emerald-500 transition uppercase placeholder:text-white/20"
                       />
                       <button
                         onClick={handleApplyVoucher}
                         className="bg-emerald-500 hover:bg-emerald-400 text-[#0D241F] px-3 rounded-lg text-[10px] font-black uppercase transition cursor-pointer border-none"
                       >
-                        Gunakan
+                        Klaim
                       </button>
                     </div>
                   ) : (
@@ -450,10 +494,8 @@ export default function CartPage() {
                           {appliedVoucher.code}
                         </p>
                         <p className="text-[9px] text-emerald-400/60">
-                          Hemat Rp{" "}
-                          {Number(
-                            appliedVoucher.value_amount ?? 0,
-                          ).toLocaleString()}
+                          -Rp{" "}
+                          {Number(appliedVoucher.value_amount).toLocaleString()}
                         </p>
                       </div>
                       <button
@@ -484,6 +526,41 @@ export default function CartPage() {
                   )}
                 </div>
 
+                {/* INTERFACES B: AMBIL DATA PROMO KAMPANYE AKTIF */}
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                    Gunakan Promo Sistem Aktif
+                  </label>
+                  {promoLoading ? (
+                    <p className="text-[10px] text-slate-400 animate-pulse">
+                      Memasang jaringan kampanye...
+                    </p>
+                  ) : (
+                    <select
+                      value={selectedPromoId}
+                      onChange={handlePromoChange}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-2 text-[11px] font-bold text-white outline-none focus:border-emerald-500 transition cursor-pointer"
+                    >
+                      <option value="" className="text-slate-800">
+                        -- Pilih Promo Potongan --
+                      </option>
+                      {availablePromos.map((p) => (
+                        <option
+                          key={p.id}
+                          value={p.id}
+                          className="text-slate-800"
+                        >
+                          {p.code} (Potongan Rp{" "}
+                          {Number(p.value_amount).toLocaleString()})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <hr className="border-white/10 my-2" />
+
+                {/* DISPLAY RINCIAN CALCULATED BILLING */}
                 <div className="flex justify-between text-slate-300">
                   <span>Subtotal Produk</span>
                   <span className="font-mono">
@@ -494,15 +571,26 @@ export default function CartPage() {
                     }).format(totalCartPrice)}
                   </span>
                 </div>
-                {appliedVoucher && (
+
+                {voucherDiscount > 0 && (
                   <div className="flex justify-between text-emerald-400 font-bold">
                     <span>Potongan Voucher</span>
                     <span className="font-mono">
                       -Rp{" "}
-                      {new Intl.NumberFormat("id-ID").format(discountAmount)}
+                      {new Intl.NumberFormat("id-ID").format(voucherDiscount)}
                     </span>
                   </div>
                 )}
+
+                {promoDiscount > 0 && (
+                  <div className="flex justify-between text-cyan-400 font-bold">
+                    <span>Potongan Promo</span>
+                    <span className="font-mono">
+                      -Rp {new Intl.NumberFormat("id-ID").format(promoDiscount)}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex justify-between text-slate-300">
                   <span>Ongkos Kirim ({deliveryMethod})</span>
                   <span className="font-mono">
@@ -510,6 +598,7 @@ export default function CartPage() {
                     {new Intl.NumberFormat("id-ID").format(currentDeliveryFee)}
                   </span>
                 </div>
+
                 <div className="flex justify-between text-slate-300">
                   <span>Pajak PPN (12%)</span>
                   <span className="font-mono">

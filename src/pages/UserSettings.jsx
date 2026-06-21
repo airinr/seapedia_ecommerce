@@ -64,10 +64,14 @@ export default function UserSettings() {
     loadProfileData();
   }, [roleLoading, user, derivedFirstName, derivedLastName]);
 
-  // Logika auto-redirect khusus Seller
+  // Logika auto-redirect khusus Seller, Admin, & Driver
   useEffect(() => {
     if (!roleLoading && activeRole === "Seller") {
       navigate("/seller/dashboard");
+    } else if (!roleLoading && activeRole === "Admin") {
+      navigate("/admin/vouchers");
+    } else if (!roleLoading && activeRole === "Driver") {
+      navigate("/driver/dashboard");
     }
   }, [activeRole, roleLoading, navigate]);
 
@@ -305,7 +309,9 @@ export default function UserSettings() {
                     onClick={() =>
                       role === "Seller"
                         ? navigate("/register-seller")
-                        : handleSwitchRole(role)
+                        : role === "Driver"
+                          ? navigate("/register-driver")
+                          : handleSwitchRole(role)
                     }
                     className={`p-4 rounded-xl border text-center relative transition cursor-pointer ${isActive ? "border-emerald-600 bg-emerald-50/40 text-emerald-900 font-bold" : "border-slate-200 bg-white hover:border-slate-300"}`}
                   >

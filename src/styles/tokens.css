@@ -1,0 +1,70 @@
+/* =============================================================
+   Seapedia Ecommerce — Global Design Tokens
+   File ini mengekspor variabel CSS (custom properties) untuk
+   font & warna. Dipakai bersama tailwind.config.js.
+
+   Cara pakai:
+     - Class Tailwind: `bg-primary`, `text-secondary`, `font-sans`, dst
+     - Variabel CSS : `var(--color-primary)`, `var(--font-sans)`, dst
+   ============================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
+:root {
+  /* ---- Font Families ---- */
+  --font-sans: "Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Poppins", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* ---- Brand Colors ---- */
+  --color-primary: #0ea5a4;
+  --color-primary-light: #5eead4;
+  --color-primary-dark: #0f766e;
+
+  --color-secondary: #0369a1;
+  --color-secondary-light: #38bdf8;
+  --color-secondary-dark: #075985;
+
+  --color-accent: #f59e0b;
+  --color-accent-light: #fbbf24;
+  --color-accent-dark: #b45309;
+
+  /* ---- Neutral Colors ---- */
+  --color-deep: #0f172a;
+  --color-ink: #1e293b;
+  --color-muted: #64748b;
+  --color-surface: #f8fafc;
+  --color-background: #ffffff;
+  --color-border: #e2e8f0;
+
+  /* ---- Status Colors ---- */
+  --color-success: #16a34a;
+  --color-warning: #f59e0b;
+  --color-danger: #dc2626;
+  --color-info: #0ea5e9;
+
+  /* ---- Shadows ---- */
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.06), 0 1px 3px 0 rgb(15 23 42 / 0.08);
+  --shadow-elevated: 0 10px 15px -3px rgb(15 23 42 / 0.10), 0 4px 6px -4px rgb(15 23 42 / 0.08);
+}
+
+/* ---- Base typography: terapkan Poppins ke seluruh aplikasi ---- */
+html,
+body,
+#root {
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background-color: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  color: var(--color-deep);
+  font-weight: 600;
+}
+
+button, input, select, textarea {
+  font-family: var(--font-sans);
+}
