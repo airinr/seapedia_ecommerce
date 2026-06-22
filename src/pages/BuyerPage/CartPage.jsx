@@ -67,11 +67,10 @@ export default function CartPage() {
         const { data, error } = await supabase
           .from("discounts")
           .select("*")
-          .eq("type", "Promo") // Murni mengambil data baris bertipe Promo
+          .eq("type", "Promo")
           .order("created_at", { ascending: false });
 
         if (!error && data) {
-          // Menyaring item promo yang masih berlaku dan kuotanya di atas 0
           const validPromos = data.filter(
             (p) =>
               new Date(p.expiry_date) >= new Date() &&
@@ -88,7 +87,6 @@ export default function CartPage() {
     fetchPlatformPromos();
   }, []);
 
-  // Handler pergantian pilihan komponen dropdown Promo
   const handlePromoChange = (e) => {
     const promoId = e.target.value;
     setSelectedPromoId(promoId);
@@ -117,7 +115,6 @@ export default function CartPage() {
     }
 
     try {
-      // Mencari kode unik yang diinput pembeli di dalam baris bertipe 'Voucher'
       const { data, error } = await supabase
         .from("discounts")
         .select("*")
@@ -130,13 +127,11 @@ export default function CartPage() {
         return;
       }
 
-      // Validasi waktu kedaluwarsa dokumen diskon
       if (new Date(data.expiry_date) < new Date()) {
         setVoucherError("Voucher ini sudah kedaluwarsa.");
         return;
       }
 
-      // Validasi sisa kuota pemakaian pembuat voucher
       if ((data.remaining_usage ?? 0) <= 0) {
         setVoucherError("Kuota pemakaian kode voucher ini sudah habis.");
         return;
@@ -179,9 +174,10 @@ export default function CartPage() {
 
       if (cartItems.length === 0) return;
 
+      // 🚀 PERBAIKAN: Ambil wallet_balance sekaligus delivery_address dari tabel profiles
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("wallet_balance")
+        .select("wallet_balance, delivery_address")
         .eq("id", authUser.id)
         .maybeSingle();
 
@@ -193,6 +189,11 @@ export default function CartPage() {
       const currentDbBalance = profileData
         ? Number(profileData.wallet_balance || 0)
         : 0;
+
+      // 🚀 PERBAIKAN: Ambil alamat dinamis hasil input halaman pengaturan pengguna
+      const activeDeliveryAddress =
+        profileData?.delivery_address?.trim() ||
+        "Alamat Pengiriman Utama Pembeli";
 
       if (currentDbBalance < grandTotal) {
         alert(
@@ -225,7 +226,7 @@ export default function CartPage() {
         },
       ]);
 
-      // 📉 UPDATE SISA KUOTA KEDUA DISKON DI TABEL DISCOUNTS JIKA DIKLAIM USER
+      // 📉 UPDATE SISA KUOTA DISKON
       if (appliedVoucher) {
         await supabase
           .from("discounts")
@@ -268,7 +269,10 @@ export default function CartPage() {
 
       const storeId = uniqueStoreIds[0];
       const initialStatus = "Sedang Dikemas";
-      const defaultAddress = "Alamat Pengiriman Utama Pembeli";
+
+      // MENGHITUNG BATAS WAKTU OVERDUE (7 HARI DARI SEKARANG)
+      const now = new Date();
+      const overdueDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
       // KUNCI NOTA INDUK TABEL ORDERS
       const { data: insertedOrder, error: masterOrderError } = await supabase
@@ -283,8 +287,10 @@ export default function CartPage() {
             tax_amount: Number(taxAmount),
             final_total: Number(grandTotal),
             delivery_method: deliveryMethod,
-            delivery_address: defaultAddress,
+            // 🚀 PERBAIKAN: Menyimpan alamat dinamis dari profiles asli database
+            delivery_address: activeDeliveryAddress,
             current_status: initialStatus,
+            overdue_at: overdueDate.toISOString(),
           },
         ])
         .select("id")
@@ -316,9 +322,7 @@ export default function CartPage() {
       ]);
 
       clearCart();
-      alert(
-        "Selamat! Checkout berhasil diproses dengan akumulasi potongan dari tabel discounts.",
-      );
+      alert("Selamat! Checkout berhasil diproses.");
       navigate("/");
     } catch (error) {
       alert(`Gagal memproses checkout: ${error.message}`);
@@ -466,9 +470,8 @@ export default function CartPage() {
               </h3>
 
               <div className="space-y-4 border-b border-white/10 pb-4 mb-4 text-xs font-medium">
-                {/* INTERFACES A: COCOKKAN KODE VOUCHER */}
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                  <label className="block text-[10px] font-black text-slate-400 tracking-widest mb-1.5">
                     Klaim Voucher Platform / Toko
                   </label>
                   {!appliedVoucher ? (
@@ -526,7 +529,6 @@ export default function CartPage() {
                   )}
                 </div>
 
-                {/* INTERFACES B: AMBIL DATA PROMO KAMPANYE AKTIF */}
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
                     Gunakan Promo Sistem Aktif
@@ -560,7 +562,6 @@ export default function CartPage() {
 
                 <hr className="border-white/10 my-2" />
 
-                {/* DISPLAY RINCIAN CALCULATED BILLING */}
                 <div className="flex justify-between text-slate-300">
                   <span>Subtotal Produk</span>
                   <span className="font-mono">

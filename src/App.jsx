@@ -20,7 +20,7 @@ import ProductDetailPage from "./pages/BuyerPage/ProductDetailPage";
 import BuyerOrdersPage from "./pages/BuyerPage/BuyerOrdersPage";
 import WalletPage from "./pages/BuyerPage/WalletPage";
 import ReturnRequestPage from "./pages/BuyerPage/ReturnRequestPage";
-import BuyerLayout from "./pages/BuyerPage/BuyerLayout"; 
+import BuyerLayout from "./pages/BuyerPage/BuyerLayout";
 import LoginPage from "./pages/LoginPage"; // 🚀 Import LoginPage
 import AdminLayout from "./pages/AdminPage/AdminLayout";
 import AdminVoucherDashboard from "./pages/AdminPage/AdminVoucherDashboard";
@@ -30,6 +30,7 @@ import DriverLayout from "./pages/DriverPage/DriverLayout";
 import DriverDashboard from "./pages/DriverPage/DriverDashboard";
 import DriverRegistration from "./pages/DriverPage/DriverRegistration";
 import DriverRevenuePage from "./pages/DriverPage/DriverRevenuePage";
+import MyReviewsApp from "./pages/BuyerPage/MyReviewsApp";
 
 export default function App() {
   return (
@@ -45,7 +46,11 @@ export default function App() {
           <Route path="/cart" element={<CartPage />} />
           <Route path="/orders" element={<BuyerOrdersPage />} />
           <Route path="/wallet" element={<WalletPage />} />
-          <Route path="/orders/return/:orderId" element={<ReturnRequestPage />} />
+          <Route
+            path="/orders/return/:orderId"
+            element={<ReturnRequestPage />}
+          />
+          <Route path="/reviews" element={<MyReviewsApp />} />
         </Route>
 
         {/* Jalur Auth */}
@@ -60,7 +65,10 @@ export default function App() {
           <Route path="/seller/dashboard" element={<SellerDashboard />} />
           <Route path="/seller/catalog" element={<ProductCatalog />} />
           <Route path="/seller/orders" element={<SellerOrdersPage />} />
-          <Route path="/seller/orders/:id" element={<SellerOrderDetailPage />} />
+          <Route
+            path="/seller/orders/:id"
+            element={<SellerOrderDetailPage />}
+          />
         </Route>
 
         {/* Panel Admin */}

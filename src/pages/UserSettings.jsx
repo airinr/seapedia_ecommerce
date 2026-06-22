@@ -21,13 +21,12 @@ export default function UserSettings() {
   const [lastName, setLastName] = useState("");
   const [bio, setBio] = useState("");
 
-  // 🚀 BARU: State untuk menampung alamat dan nomor telepon sesuai skema tabel profiles
+  // State untuk menampung alamat dan nomor telepon sesuai skema tabel profiles
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [walletBalance, setWalletBalance] = useState(0);
 
   const [loading, setLoading] = useState(false);
-  // eslint-disable-next-line no-unused-vars
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -86,7 +85,8 @@ export default function UserSettings() {
   // =========================================================================
   // FUNGSI UPDATE DATA PROFIL & ALAMAT KE SUPABASE (UPSERT)
   // =========================================================================
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = async (e) => {
+    if (e) e.preventDefault();
     try {
       setLoading(true);
       setErrorMsg("");
@@ -100,15 +100,15 @@ export default function UserSettings() {
       });
       if (authError) throw authError;
 
-      // B. 💡 GANTI .update() MENJADI .upsert() AGAR JIKA DATA BELUM ADA AKAN DIBUAT BARU
+      // B. Jalankan Upsert data profil
       const { error: profileError } = await supabase.from("profiles").upsert(
         {
-          id: user.id, // Wajib menyertakan Primary Key id untuk pengecekan konflik data
+          id: user.id,
           full_name: combinedName,
           delivery_address: deliveryAddress.trim(),
           phone_number: phoneNumber.trim(),
         },
-        { onConflict: "id" }, // Jika ID bentrok/sudah ada, lakukan update data saja
+        { onConflict: "id" },
       );
 
       if (profileError) throw profileError;
@@ -166,38 +166,19 @@ export default function UserSettings() {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-black text-[#0D241F] tracking-tight">
-            User Settings
-          </h1>
-          <p className="text-slate-400 text-xs mt-0.5">
-            Manage your account preferences and security settings.
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <button className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-200/60 rounded-xl transition cursor-pointer border-none bg-transparent">
-            Discard Changes
-          </button>
-          <button
-            onClick={handleSaveChanges}
-            disabled={loading}
-            className="bg-[#0D241F] hover:bg-emerald-950 text-white font-bold text-xs px-5 py-2 rounded-xl shadow-sm transition cursor-pointer disabled:bg-slate-300 border-none"
-          >
-            {loading ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
+      {/* JUDUL HALAMAN UTAMA */}
+      <div className="mb-8">
+        <h1 className="text-xl font-black text-[#0D241F] tracking-tight">
+          Pengaturan Pengguna
+        </h1>
+        <p className="text-slate-400 text-xs mt-0.5">
+          Kelola preferensi akun dan data informasi profil Anda.
+        </p>
       </div>
 
       <div className="flex gap-6 border-b border-slate-200 pb-3 text-xs font-bold text-slate-400 mb-6">
         <span className="text-[#0D241F] border-b-2 border-[#0D241F] pb-3 cursor-pointer">
-          Account Profile
-        </span>
-        <span className="hover:text-[#0D241F] cursor-pointer transition">
-          Security
-        </span>
-        <span className="hover:text-[#0D241F] cursor-pointer transition">
-          Notifications
+          Profil Akun
         </span>
       </div>
 
@@ -205,104 +186,132 @@ export default function UserSettings() {
         <div className="lg:col-span-2 space-y-6">
           {/* PERSONAL INFORMATION FORM */}
           <div className="bg-white border border-slate-200/70 rounded-2xl p-6 shadow-xs space-y-4">
-            <h3 className="font-extrabold text-sm text-[#0D241F] border-b border-slate-50 pb-2">
-              Personal Information
+            <h3 className="font-extrabold text-xs text-[#0D241F] uppercase tracking-wider border-b border-slate-50 pb-2">
+              Informasi Pribadi
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleSaveChanges} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
+                    Nama Depan
+                  </label>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-medium outline-none focus:bg-white focus:border-emerald-600 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
+                    Nama Belakang
+                  </label>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-medium outline-none focus:bg-white focus:border-emerald-600 transition"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
+                    Alamat Email
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    disabled
+                    className="w-full bg-slate-100/70 border border-slate-200 text-slate-400 rounded-xl py-2.5 px-4 text-xs font-medium cursor-not-allowed outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
+                    Nomor Telepon
+                  </label>
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="Contoh: 08123456789"
+                    className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-medium outline-none focus:bg-white focus:border-emerald-600 transition"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
-                  First Name
+                  Alamat Pengiriman (Rumah)
                 </label>
                 <input
                   type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-medium outline-none focus:bg-white focus:border-emerald-600 transition"
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  placeholder="Masukkan alamat lengkap rumah Anda untuk keperluan logistik kurir"
+                  className={`w-full border rounded-xl py-2.5 px-4 text-xs font-medium outline-none focus:bg-white focus:border-emerald-600 transition ${
+                    !deliveryAddress.trim()
+                      ? "bg-amber-50/40 border-amber-300"
+                      : "bg-[#F8F9FA] border-slate-200"
+                  }`}
                 />
               </div>
+
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
-                  Last Name
+                  Biodata
                 </label>
-                <input
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-medium outline-none focus:bg-white focus:border-emerald-600 transition"
+                <textarea
+                  rows="2"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Ceritakan latar belakang singkat Anda..."
+                  className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-medium outline-none focus:bg-white focus:border-emerald-600 transition resize-none leading-relaxed"
                 />
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  disabled
-                  className="w-full bg-slate-100/70 border border-slate-200 text-slate-400 rounded-xl py-2.5 px-4 text-xs font-medium cursor-not-allowed outline-none"
-                />
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition cursor-pointer border-none bg-transparent"
+                >
+                  Batalkan
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-[#0D241F] hover:bg-emerald-950 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-sm transition cursor-pointer disabled:bg-slate-300 border-none"
+                >
+                  {loading ? "Menyimpan..." : "Simpan Perubahan"}
+                </button>
               </div>
-              <div>
-                {/* 🚀 FIELD BARU: NOMOR TELEPON */}
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="Contoh: 08123456789"
-                  className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-medium outline-none focus:bg-white focus:border-emerald-600 transition"
-                />
-              </div>
-            </div>
-
-            {/* 🚀 FIELD BARU: INPUT ALAMAT RUMAH / PENGIRIMAN */}
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
-                Delivery Address (Alamat Rumah)
-              </label>
-              <input
-                type="text"
-                value={deliveryAddress}
-                onChange={(e) => setDeliveryAddress(e.target.value)}
-                placeholder="Masukkan alamat lengkap rumah Anda untuk keperluan logistik kurir"
-                className={`w-full border rounded-xl py-2.5 px-4 text-xs font-medium outline-none focus:bg-white focus:border-emerald-600 transition ${!deliveryAddress.trim() ? "bg-amber-50/40 border-amber-300" : "bg-[#F8F9FA] border-slate-200"}`}
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
-                Bio
-              </label>
-              <textarea
-                rows="2"
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                placeholder="Tell us about your professional background..."
-                className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-medium outline-none focus:bg-white focus:border-emerald-600 transition resize-none leading-relaxed"
-              />
-            </div>
+            </form>
           </div>
 
           {/* ROLE SWITCHER */}
           <div className="bg-white border border-slate-200/70 rounded-2xl p-6 shadow-xs space-y-4">
             <div>
-              <h3 className="font-extrabold text-sm text-[#0D241F]">
-                Account Role Switcher
+              <h3 className="font-extrabold text-xs text-[#0D241F] uppercase tracking-wider border-b border-slate-50 pb-2">
+                Pengubah Peran Akun
               </h3>
               <p className="text-slate-400 text-[11px] mt-0.5">
-                Pilih peran kustom untuk beralih fungsi akun secara permanen.
+                Pilih peran kustom untuk beralih fungsi dasbor akun secara
+                langsung.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {["Buyer", "Seller", "Driver", "Admin"].map((role) => {
+              {["Buyer", "Seller", "Driver"].map((role) => {
                 const isActive = activeRole === role;
+
+                let roleLabelIndo = role;
+                if (role === "Buyer") roleLabelIndo = "Pembeli";
+                if (role === "Seller") roleLabelIndo = "Penjual";
+                if (role === "Driver") roleLabelIndo = "Kurir";
+
                 return (
                   <div
                     key={role}
@@ -313,21 +322,18 @@ export default function UserSettings() {
                           ? navigate("/register-driver")
                           : handleSwitchRole(role)
                     }
-                    className={`p-4 rounded-xl border text-center relative transition cursor-pointer ${isActive ? "border-emerald-600 bg-emerald-50/40 text-emerald-900 font-bold" : "border-slate-200 bg-white hover:border-slate-300"}`}
+                    className={`p-4 rounded-xl border text-center relative transition cursor-pointer ${
+                      isActive
+                        ? "border-emerald-600 bg-emerald-50/40 text-emerald-900 font-bold"
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
                   >
-                    <div className="text-xl mb-1">
-                      {role === "Buyer"
-                        ? "🛍️"
-                        : role === "Seller"
-                          ? "🏪"
-                          : role === "Driver"
-                            ? "🚴"
-                            : "🛡️"}
-                    </div>
-                    <h4 className="text-xs font-extrabold">{role}</h4>
+                    <h4 className="text-xs font-extrabold uppercase tracking-wide py-2">
+                      {roleLabelIndo}
+                    </h4>
                     {isActive && (
-                      <span className="absolute top-2 right-2 bg-emerald-600 text-white font-mono text-[8px] px-1.5 py-0.5 rounded-full uppercase font-bold">
-                        Active
+                      <span className="absolute top-2 right-2 bg-emerald-600 text-white font-mono text-[8px] px-1.5 py-0.5 rounded-md uppercase font-bold tracking-wider">
+                        Aktif
                       </span>
                     )}
                   </div>
@@ -338,27 +344,27 @@ export default function UserSettings() {
         </div>
 
         {/* SIDE CARD PROFILE PREVIEW */}
+        {/* 🚀 PERBAIKAN: Menghapus kontainer foto profil (Avatar) agar terlihat minimalis */}
         <div className="space-y-6">
           <div className="bg-white border border-slate-200/70 rounded-2xl p-6 shadow-xs text-center flex flex-col items-center">
-            <div className="w-20 h-20 bg-slate-100 rounded-full overflow-hidden relative border-2 border-slate-200 mb-4">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"
-                alt="Avatar"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <h3 className="font-extrabold text-sm text-[#0D241F]">
+            <h3 className="font-extrabold text-sm text-[#0D241F] mt-2">
               {firstName || derivedFirstName}{" "}
               {lastName || derivedLastName || "User"}
             </h3>
             <p className="text-[10px] font-mono text-slate-400 mt-0.5 font-bold uppercase tracking-wider">
-              {activeRole || "Buyer"}
+              {activeRole === "Buyer"
+                ? "Pembeli"
+                : activeRole === "Seller"
+                  ? "Penjual"
+                  : activeRole === "Driver"
+                    ? "Kurir"
+                    : activeRole}
             </p>
 
             {/* MINI CARD SALDO E-WALLET */}
             <div className="mt-4 w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-left">
               <span className="text-[9px] font-bold text-slate-400 uppercase block tracking-wider">
-                Seapedia Pay Balance
+                Saldo Seapedia Pay
               </span>
               <span className="font-mono text-sm font-black text-emerald-700 block mt-0.5">
                 {new Intl.NumberFormat("id-ID", {

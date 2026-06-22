@@ -106,7 +106,7 @@ export default function SellerLayout() {
 
   const sellerMenus = [
     {
-      name: "Dasbor",
+      name: "Dashboard",
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"

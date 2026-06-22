@@ -116,7 +116,7 @@ export default function SellerOrdersPage() {
       );
 
       if (!matchedOrder) {
-        throw new Error("Data manifes pesanan penunjang tidak ditemukan.");
+        throw new Error("Data pesanan penunjang tidak ditemukan.");
       }
 
       const returnRowInfo = returnsMeta[matchedOrder.id];
@@ -313,7 +313,7 @@ export default function SellerOrdersPage() {
             </div>
             <p className="text-slate-400 text-xs font-bold tracking-wide">
               {activeTab === "running" &&
-                "Tidak ada pesanan masuk dalam manifes pemrosesan kemas atau kurir saat ini."}
+                "Tidak ada pesanan masuk dalam pemrosesan kemas atau kurir saat ini."}
               {activeTab === "completed" &&
                 "Belum ditemukan adanya catatan riwayat transaksi nota yang telah sukses diselesaikan."}
               {activeTab === "returned" &&

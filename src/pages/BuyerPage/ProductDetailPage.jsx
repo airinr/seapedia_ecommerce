@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
@@ -9,7 +10,6 @@ export default function ProductDetailPage() {
   const { addToCart, getCartCount } = useCart();
 
   const [product, setProduct] = useState(null);
-  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mainImage, setMainImage] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -19,7 +19,7 @@ export default function ProductDetailPage() {
       try {
         setLoading(true);
 
-        // 1. 🚀 PERBAIKAN QUERY: Ambil data produk sekaligus JOIN dengan tabel 'stores'
+        // Ambil data produk sekaligus JOIN dengan tabel 'stores'
         const { data: prodData, error: prodError } = await supabase
           .from("products")
           .select(
@@ -45,33 +45,6 @@ export default function ProductDetailPage() {
           setMainImage(
             "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800",
           );
-        }
-
-        // 2. Ambil Ulasan Produk
-        const { data: revData, error: revError } = await supabase
-          .from("app_reviews")
-          .select("*")
-          .limit(5);
-
-        if (!revError && revData && revData.length > 0) {
-          setReviews(revData);
-        } else {
-          setReviews([
-            {
-              id: 1,
-              reviewer_name: "Ahmad Ristiana",
-              rating: 5,
-              comment:
-                "Kualitas rancang bangun sangat kokoh, suara high-fidelity jernih sekali!",
-            },
-            {
-              id: 2,
-              reviewer_name: "Budi Santoso",
-              rating: 4,
-              comment:
-                "Pengiriman instan kilat, respon seller ramah dan cepat.",
-            },
-          ]);
         }
       } catch (error) {
         console.error("Gagal memuat detail produk:", error.message);
@@ -227,9 +200,9 @@ export default function ProductDetailPage() {
           <div className="lg:col-span-4 space-y-6">
             <div>
               <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md border border-emerald-100">
-                ★ 4.9 Premium Merchant
+                Seapedia
               </span>
-              <h1 className="text-2xl md:text-3xl font-black text-[#0D241F] tracking-tight mt-3 mb-2">
+              <h1 className="text-xl md:text-2xl font-black text-[#0D241F] tracking-tight mt-3 mb-2">
                 {product.product_name}
               </h1>
               <p className="text-2xl font-mono font-black text-emerald-700">
@@ -241,7 +214,7 @@ export default function ProductDetailPage() {
               </p>
             </div>
 
-            {/* 🚀 COMPONENT BARU: INFORMASI IDENTITAS TOKO SELLER */}
+            {/* INFORMASI IDENTITAS TOKO SELLER */}
             <div className="border-t border-b border-slate-200/80 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-[#0D241F] text-white rounded-full flex items-center justify-center font-black text-sm shadow-2xs border border-emerald-950">
@@ -315,7 +288,6 @@ export default function ProductDetailPage() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="text-emerald-600"
                 >
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
@@ -332,7 +304,6 @@ export default function ProductDetailPage() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="text-emerald-600"
                 >
                   <path d="M5 18H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.19M15 6h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-3.19" />
                   <path d="M23 13v-2" />
@@ -420,83 +391,6 @@ export default function ProductDetailPage() {
                   className="w-full bg-[#0D241F] hover:bg-emerald-950 text-white font-bold py-2.5 rounded-xl text-xs shadow-xs transition cursor-pointer border-none disabled:bg-slate-300"
                 >
                   Beli Langsung Sekarang ➔
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* SECTION ULASAN KOMUNITAS */}
-        <div className="mt-20 pt-10 border-t border-slate-200">
-          <h2 className="text-lg font-black text-[#0D241F] tracking-tight mb-6">
-            Ulasan Pembeli ({reviews.length})
-          </h2>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* List Review */}
-            <div className="lg:col-span-8 space-y-4">
-              {reviews.map((rev) => (
-                <div
-                  key={rev.id}
-                  className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-2xs flex gap-4"
-                >
-                  <div className="w-10 h-10 bg-emerald-50 text-emerald-800 rounded-xl flex items-center justify-center font-black text-xs shrink-0 border border-emerald-100">
-                    {rev.reviewer_name.charAt(0)}
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-3">
-                      <h4 className="font-extrabold text-xs text-[#0D241F]">
-                        {rev.reviewer_name}
-                      </h4>
-                      <span className="text-amber-400 text-[10px]">
-                        {"★".repeat(rev.rating)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                      {rev.comment}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Form Tambah Review */}
-            <div className="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-2xs space-y-4">
-              <h3 className="font-black text-xs text-[#0D241F] uppercase tracking-wider">
-                Bagikan Penilaian Anda
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                    Skala Rating
-                  </label>
-                  <div className="flex gap-1.5 text-xl text-slate-300 cursor-pointer">
-                    {["★", "★", "★", "★", "★"].map((star, i) => (
-                      <span key={i} className="hover:text-amber-400 transition">
-                        {star}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                    Tulis Feedback
-                  </label>
-                  <textarea
-                    rows="3"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:bg-white focus:border-emerald-600 outline-none resize-none leading-relaxed text-slate-600"
-                    placeholder="Berikan ulasan jujur tentang kualitas produk..."
-                  ></textarea>
-                </div>
-                <button
-                  onClick={() =>
-                    alert(
-                      "Simulasi: Fitur pengiriman ulasan produk disimpan ke antrean level 6.",
-                    )
-                  }
-                  className="w-full bg-[#0D241F] text-white font-bold py-2 rounded-xl border-none text-xs cursor-pointer hover:bg-emerald-950 transition shadow-xs"
-                >
-                  Kirim Ulasan Publik
                 </button>
               </div>
             </div>

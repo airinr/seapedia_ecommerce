@@ -195,7 +195,7 @@ export default function SellerDashboard() {
         <div className="space-y-6">
           <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs">
             <h3 className="font-extrabold text-sm text-[#0D241F] uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
-              Manifest Pesanan Terbaru
+              Pesanan Terbaru
             </h3>
             {!orders || orders.length === 0 ? (
               <p className="text-xs text-slate-400 font-medium py-4">

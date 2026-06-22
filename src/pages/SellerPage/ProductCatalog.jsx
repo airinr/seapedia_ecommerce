@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
@@ -23,7 +24,7 @@ export default function ProductCatalog() {
   const [file3, setFile3] = useState(null);
   const [existingUrls, setExistingUrls] = useState([]);
 
-  // Refs for file inputs to clear them manually
+  // Refs untuk membersihkan file input secara manual
   const fileRef1 = useRef();
   const fileRef2 = useRef();
   const fileRef3 = useRef();
@@ -48,7 +49,6 @@ export default function ProductCatalog() {
     e.preventDefault();
     if (!store?.id) return;
 
-    // Validation for New Product
     if (!isEditing && (!file1 || !file2 || !file3)) {
       alert("Gagal menyimpan! Anda wajib memilih minimal 3 file foto produk.");
       return;
@@ -56,34 +56,26 @@ export default function ProductCatalog() {
 
     try {
       setActionLoading(true);
-
-      // Prepare final image array
       let finalUrls = isEditing ? [...existingUrls] : [];
 
-      // Ensure array has at least 3 slots if we are editing
       if (isEditing) {
         while (finalUrls.length < 3) finalUrls.push(null);
       }
 
-      // Upload new files and replace at specific index
       if (file1) {
         const url = await uploadImageProcess(file1);
-        if (isEditing) finalUrls[0] = url;
-        else finalUrls[0] = url; // Push logic for new product is handled by index initialization
+        finalUrls[0] = url;
       }
       if (file2) {
         const url = await uploadImageProcess(file2);
-        if (isEditing) finalUrls[1] = url;
-        else finalUrls[1] = url;
+        finalUrls[1] = url;
       }
       if (file3) {
         const url = await uploadImageProcess(file3);
-        if (isEditing) finalUrls[2] = url;
-        else finalUrls[2] = url;
+        finalUrls[2] = url;
       }
 
-      // Filter out nulls just in case (though we want 3 for consistency)
-      const cleanUrls = finalUrls.filter(url => url !== null);
+      const cleanUrls = finalUrls.filter((url) => url !== null);
 
       const payload = {
         store_id: store.id,
@@ -160,7 +152,8 @@ export default function ProductCatalog() {
     } catch (err) {
       alert(err.message);
     } finally {
-      setActionLoading(false);
+      // eslint-disable-next-line no-undef
+      setLoading(false);
     }
   };
 
@@ -169,38 +162,42 @@ export default function ProductCatalog() {
       {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-slate-200/80 rounded-[32px] p-8 shadow-xs">
         <div>
-          <h3 className="font-black text-xl text-[#0D241F]">📦 Katalog Produk</h3>
-          <p className="text-slate-400 text-xs mt-1">Kelola barang dagangan Anda dengan mudah di sini.</p>
+          <h3 className="font-black text-xl text-[#0D241F]">Katalog Produk</h3>
+          <p className="text-slate-400 text-xs mt-1">
+            Kelola barang dagangan Anda dengan mudah di sini.
+          </p>
         </div>
         <button
           onClick={() => {
             setIsEditing(false);
             setShowModal(true);
           }}
-          className="bg-[#0D241F] hover:bg-emerald-950 text-white font-bold text-xs px-6 py-3.5 rounded-2xl shadow-lg transition border-none cursor-pointer flex items-center gap-2"
+          className="bg-[#0D241F] hover:bg-emerald-950 text-white font-bold text-xs px-6 py-3.5 rounded-2xl shadow-lg transition border-none cursor-pointer flex items-center gap-2 uppercase tracking-wider"
         >
-          <span className="text-lg">+</span> Tambah Produk Baru
+          Tambah Produk Baru
         </button>
       </div>
 
       {/* MODAL POPUP (ADD/EDIT) */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" 
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
             onClick={closeAndResetForm}
           ></div>
-          
-          {/* Modal Content */}
+
           <div className="relative bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             <div className="p-8 md:p-10">
               <div className="flex justify-between items-center mb-8">
                 <div>
                   <h3 className="font-black text-2xl text-[#0D241F]">
-                    {isEditing ? "📝 Edit Informasi Produk" : "✨ Daftarkan Produk Baru"}
+                    {isEditing
+                      ? "Edit Informasi Produk"
+                      : "Daftarkan Produk Baru"}
                   </h3>
-                  <p className="text-slate-400 text-xs mt-1">Lengkapi detail produk Anda di bawah ini.</p>
+                  <p className="text-slate-400 text-xs mt-1">
+                    Lengkapi detail produk Anda di bawah ini.
+                  </p>
                 </div>
                 <button
                   onClick={closeAndResetForm}
@@ -213,18 +210,26 @@ export default function ProductCatalog() {
               <form onSubmit={handleSaveProduct} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Nama Produk</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      Nama Produk
+                    </label>
                     <input
-                      type="text" required value={prodName}
+                      type="text"
+                      required
+                      value={prodName}
                       onChange={(e) => setProdName(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-5 text-sm focus:bg-white focus:border-emerald-600 outline-none transition"
                       placeholder="Contoh: Headphones Ultra Pro"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Harga (Rupiah)</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      Harga (Rupiah)
+                    </label>
                     <input
-                      type="number" required value={prodPrice}
+                      type="number"
+                      required
+                      value={prodPrice}
                       onChange={(e) => setProdPrice(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-5 text-sm focus:bg-white focus:border-emerald-600 outline-none transition"
                       placeholder="1250000"
@@ -233,9 +238,13 @@ export default function ProductCatalog() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Deskripsi Produk</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                    Deskripsi Produk
+                  </label>
                   <textarea
-                    required rows="3" value={prodDesc}
+                    required
+                    rows="3"
+                    value={prodDesc}
                     onChange={(e) => setProdDesc(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-5 text-sm focus:bg-white focus:border-emerald-600 outline-none transition resize-none"
                     placeholder="Jelaskan fitur dan keunggulan produk Anda..."
@@ -244,9 +253,13 @@ export default function ProductCatalog() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Stok Inventaris</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                      Stok Inventaris
+                    </label>
                     <input
-                      type="number" required value={prodStock}
+                      type="number"
+                      required
+                      value={prodStock}
                       onChange={(e) => setProdStock(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-5 text-sm focus:bg-white focus:border-emerald-600 outline-none transition"
                       placeholder="10"
@@ -257,15 +270,26 @@ export default function ProductCatalog() {
                 {/* IMAGE UPLOAD SECTION */}
                 <div className="bg-[#0D241F]/[0.02] border border-slate-100 rounded-[32px] p-6 space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black text-[#0D241F] uppercase tracking-widest">📸 Galeri Foto Produk</span>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">Wajib 3 Foto Utama</span>
+                    <span className="text-[10px] font-black text-[#0D241F] uppercase tracking-widest">
+                      Galeri Foto Produk
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">
+                      Wajib 3 Foto Utama
+                    </span>
                   </div>
                   <div className="grid grid-cols-1 gap-3">
                     {[1, 2, 3].map((num) => (
                       <div key={num} className="relative group">
                         <input
-                          type="file" accept="image/*"
-                          ref={num === 1 ? fileRef1 : num === 2 ? fileRef2 : fileRef3}
+                          type="file"
+                          accept="image/*"
+                          ref={
+                            num === 1
+                              ? fileRef1
+                              : num === 2
+                                ? fileRef2
+                                : fileRef3
+                          }
                           required={!isEditing}
                           onChange={(e) => {
                             const f = e.target.files[0];
@@ -280,9 +304,11 @@ export default function ProductCatalog() {
                   </div>
                   {isEditing && (
                     <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 flex gap-2 items-center">
-                      <span className="text-lg">⚠️</span>
+                      <span className="text-slate-500 text-xs">⚠️</span>
                       <p className="text-[10px] text-amber-700 font-bold leading-relaxed">
-                        Anda sedang mengedit produk. Kosongkan pilihan file di atas jika ingin mempertahankan foto lama pada posisi tersebut.
+                        Anda sedang mengedit produk. Kosongkan pilihan file di
+                        atas jika ingin mempertahankan foto lama pada posisi
+                        tersebut.
                       </p>
                     </div>
                   )}
@@ -290,16 +316,22 @@ export default function ProductCatalog() {
 
                 <div className="flex justify-end items-center gap-4 pt-4">
                   <button
-                    type="button" onClick={closeAndResetForm}
+                    type="button"
+                    onClick={closeAndResetForm}
                     className="text-xs font-black text-slate-400 hover:text-slate-600 transition uppercase tracking-widest border-none bg-transparent cursor-pointer"
                   >
                     Batal
                   </button>
                   <button
-                    type="submit" disabled={actionLoading}
-                    className="bg-[#0D241F] hover:bg-emerald-950 text-white font-black text-xs px-10 py-4 rounded-2xl shadow-xl transition border-none cursor-pointer disabled:bg-slate-300"
+                    type="submit"
+                    disabled={actionLoading}
+                    className="bg-[#0D241F] hover:bg-emerald-950 text-white font-black text-xs px-10 py-4 rounded-2xl shadow-xl transition border-none cursor-pointer disabled:bg-slate-300 uppercase tracking-wider"
                   >
-                    {actionLoading ? "🔄 Sedang Memproses..." : isEditing ? "💾 Simpan Perubahan" : "🚀 Daftarkan Produk"}
+                    {actionLoading
+                      ? "Sedang Memproses..."
+                      : isEditing
+                        ? "Simpan Perubahan"
+                        : "Daftarkan Produk"}
                   </button>
                 </div>
               </form>
@@ -312,9 +344,12 @@ export default function ProductCatalog() {
       <div className="bg-white border border-slate-200/80 rounded-[40px] p-8 shadow-xs">
         {products.length === 0 ? (
           <div className="text-center py-24">
-            <div className="text-6xl mb-6 opacity-20">📦</div>
-            <p className="text-slate-400 font-black text-lg">Katalog Toko Masih Kosong</p>
-            <p className="text-slate-400 text-xs mt-1">Mulai tambahkan produk pertama Anda untuk berjualan.</p>
+            <p className="text-slate-400 font-black text-lg">
+              Katalog Toko Masih Kosong
+            </p>
+            <p className="text-slate-400 text-xs mt-1">
+              Mulai tambahkan produk pertama Anda untuk berjualan.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
@@ -323,7 +358,6 @@ export default function ProductCatalog() {
                 key={prod.id}
                 className="flex flex-col bg-slate-50 rounded-[32px] border border-slate-100 overflow-hidden hover:border-emerald-300 hover:shadow-xl transition-all duration-300 group"
               >
-                {/* Product Image Overlay */}
                 <div className="relative h-56 bg-slate-200 overflow-hidden">
                   {prod.image_url && prod.image_url.length > 0 ? (
                     <img
@@ -332,24 +366,28 @@ export default function ProductCatalog() {
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-400 text-4xl">📦</div>
+                    <div className="w-full h-full flex items-center justify-center text-slate-400 text-4xl">
+                      📦
+                    </div>
                   )}
                   <div className="absolute top-5 right-5 bg-white/95 backdrop-blur px-4 py-1.5 rounded-full text-[10px] font-black shadow-sm border border-slate-100 text-[#0D241F]">
                     STOK: {prod.stock}
                   </div>
                 </div>
-                
-                {/* Content */}
+
                 <div className="p-6 flex-1 flex flex-col">
                   <h4 className="font-black text-[#0D241F] text-lg truncate mb-2">
                     {prod.product_name}
                   </h4>
                   <p className="text-slate-400 text-[11px] line-clamp-2 mb-6 flex-1 leading-relaxed">
-                    {prod.description || "Toko belum memberikan deskripsi untuk produk ini."}
+                    {prod.description ||
+                      "Toko belum memberikan deskripsi untuk produk ini."}
                   </p>
-                  
+
                   <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-3xl border border-slate-100 shadow-xs">
-                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Harga</span>
+                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">
+                      Harga
+                    </span>
                     <span className="font-mono text-[#0D241F] font-black text-base">
                       {new Intl.NumberFormat("id-ID", {
                         style: "currency",
@@ -358,7 +396,7 @@ export default function ProductCatalog() {
                       }).format(prod.price)}
                     </span>
                   </div>
-                  
+
                   <div className="flex gap-3">
                     <button
                       onClick={() => handleEditClick(prod)}
@@ -368,9 +406,23 @@ export default function ProductCatalog() {
                     </button>
                     <button
                       onClick={() => handleDeleteProduct(prod.id)}
-                      className="px-4 py-3.5 bg-red-50 hover:bg-red-500 hover:text-white text-red-500 border border-red-100 rounded-2xl font-black transition-all text-xs cursor-pointer shadow-sm"
+                      className="px-4 py-3.5 bg-red-50 hover:bg-red-500 hover:text-white text-red-500 border border-red-100 rounded-2xl font-black transition-all text-xs cursor-pointer shadow-sm flex items-center justify-center"
                     >
-                      🗑️
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M3 6h18" />
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                      </svg>
                     </button>
                   </div>
                 </div>
