@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRole } from "../../hooks/useRole";
+import toast from "react-hot-toast";
 
 export default function DriverDashboard() {
   const { user } = useRole();
@@ -53,7 +54,23 @@ export default function DriverDashboard() {
         data = response.data;
         error = response.error;
       } else {
-        // 🔄 TAB RETUR: Menyaring orders yang mempunyai data di order_returns dengan status 'Disetujui'
+        // 🔄 TAB RETUR: Mengambil pesanan dengan komplain retur yang statusnya 'Disetujui'
+        const { data: returnsData, error: returnsError } = await supabase
+          .from("order_returns")
+          .select("order_id, status, reason")
+          .eq("status", "Disetujui");
+
+        if (returnsError) throw returnsError;
+
+        if (!returnsData || returnsData.length === 0) {
+          setOrders([]);
+          setLoading(false);
+          return;
+        }
+
+        const approvedOrderIds = returnsData.map((r) => r.order_id);
+
+        // 🚀 PERBAIKAN STRUKTUR FILTER: Memisahkan penulisan logic OR dan AND agar valid dibaca PostgREST Supabase
         const response = await supabase
           .from("orders")
           .select(
@@ -74,22 +91,25 @@ export default function DriverDashboard() {
               full_name,
               delivery_address,
               phone_number
-            ),
-            order_returns!inner (
-              status,
-              reason
             )
           `,
           )
-          .or(
-            `current_status.eq.Menunggu Pick-up Retur,` +
-              `and(current_status.eq.Retur Sedang Dikirim,driver_id.eq.${user.id}),` +
-              `current_status.eq.Pesanan Selesai`,
-          )
-          .eq("order_returns.status", "Disetujui")
+          .in("id", approvedOrderIds)
+          .eq("driver_id", user.id)
           .order("created_at", { ascending: false });
 
-        data = response.data;
+        if (response.data) {
+          // Singkronisasi data reasons komplain ke objek orders utama untuk mapping UI
+          data = response.data.map((order) => {
+            const matchedReturn = returnsData.find(
+              (r) => r.order_id === order.id,
+            );
+            return {
+              ...order,
+              order_returns: matchedReturn ? [matchedReturn] : [],
+            };
+          });
+        }
         error = response.error;
       }
 
@@ -97,6 +117,7 @@ export default function DriverDashboard() {
       setOrders(data || []);
     } catch (err) {
       console.error("Gagal memuat pesanan driver:", err.message);
+      toast.error("Gagal memuat pesanan: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -124,16 +145,13 @@ export default function DriverDashboard() {
         updatePayload = { current_status: nextStatus };
       }
       // Alur Logistik Retur
-      else if (
-        currentStatus === "Menunggu Pick-up Retur" ||
-        currentStatus === "Pesanan Selesai"
-      ) {
+      else if (activeTab === "retur" && currentStatus !== "Retur Sedang Dikirim") {
         nextStatus = "Retur Sedang Dikirim";
         updatePayload = { current_status: nextStatus, driver_id: user.id };
       } else if (currentStatus === "Retur Sedang Dikirim") {
         nextStatus = "Retur Selesai";
         updatePayload = { current_status: nextStatus };
-        isFinalizingReturn = true; // Flag untuk menandai perubahan status pada tabel order_returns
+        isFinalizingReturn = true;
       }
 
       if (!nextStatus) return;
@@ -154,7 +172,7 @@ export default function DriverDashboard() {
 
       if (updateOrderError) throw updateOrderError;
 
-      // 🔄 2. Jika proses retur selesai, perbarui tabel order_returns menjadi 'Selesai'
+      // 🔄 2. Jika proses retur selesai, perbarui status di tabel order_returns
       if (isFinalizingReturn) {
         const { error: updateReturnError } = await supabase
           .from("order_returns")
@@ -182,10 +200,10 @@ export default function DriverDashboard() {
 
       if (historyError) throw historyError;
 
-      alert(`Sukses! Status pesanan diperbarui ke: ${nextStatus}`);
+      toast.success(`Status pesanan diperbarui ke: ${nextStatus}`);
       fetchDriverOrders();
     } catch (err) {
-      alert("Gagal memperbarui status: " + err.message);
+      toast.error("Gagal memperbarui status: " + err.message);
     } finally {
       setActionLoading(null);
     }
@@ -269,12 +287,10 @@ export default function DriverDashboard() {
           {orders.map((order) => {
             const isWaiting = order.current_status === "Menunggu Pengirim";
             const isDelivering = order.current_status === "Sedang Dikirim";
-            const isReturnWaiting =
-              activeTab === "retur" &&
-              (order.current_status === "Menunggu Pick-up Retur" ||
-                order.current_status === "Pesanan Selesai");
             const isReturnDelivering =
               order.current_status === "Retur Sedang Dikirim";
+            const isReturnWaiting =
+              activeTab === "retur" && !isReturnDelivering;
 
             let badgeStyle = "bg-blue-50 text-blue-700 border border-blue-100";
             let statusLabel = order.current_status;

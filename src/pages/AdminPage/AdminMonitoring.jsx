@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import toast from "react-hot-toast";
 
 export default function AdminMonitoring() {
   const [stats, setStats] = useState({
@@ -61,6 +62,7 @@ export default function AdminMonitoring() {
       fetchTabData(activeTab);
     } catch (err) {
       console.error("Gagal memuat statistik admin:", err.message);
+      toast.error("Gagal memuat statistik");
     } finally {
       setLoading(false);
     }
@@ -82,6 +84,7 @@ export default function AdminMonitoring() {
 
         if (profilesError) {
           console.error("Gagal memuat data pengguna:", profilesError.message);
+          toast.error("Gagal memuat data pengguna");
           setDataList([]);
           setLoading(false);
           return;
@@ -123,6 +126,7 @@ export default function AdminMonitoring() {
 
         if (storesError) {
           console.error("Gagal memuat data toko:", storesError.message);
+          toast.error("Gagal memuat data toko");
           setDataList([]);
           setLoading(false);
           return;
@@ -198,6 +202,7 @@ export default function AdminMonitoring() {
     const { data, error } = await query;
     if (error) {
       console.error(`Gagal memuat data kategori ${tab}:`, error.message);
+      toast.error(`Gagal memuat data ${tab}`);
       setDataList([]);
     } else {
       setDataList(data || []);

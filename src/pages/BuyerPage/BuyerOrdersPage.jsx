@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useRole } from "../../hooks/useRole";
+import toast from "react-hot-toast";
 
 export default function BuyerOrdersPage() {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ export default function BuyerOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [returnsList, setReturnsList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Navigasi tab internal: "running" (Berjalan), "completed" (Selesai), atau "returned" (Pengembalian)
   const [activeTab, setActiveTab] = useState("running");
@@ -80,6 +82,8 @@ export default function BuyerOrdersPage() {
         setReturnsList(returnsRes.data || []);
       } catch (err) {
         console.error("Gagal memuat data transaksional pembeli:", err.message);
+        setError(err.message);
+        toast.error("Gagal memuat data pesanan");
       } finally {
         setLoading(false);
       }
@@ -139,6 +143,24 @@ export default function BuyerOrdersPage() {
         return "bg-amber-50 text-amber-700 border-amber-200"; // Status 'Diajukan'
     }
   };
+
+  if (error) {
+    return (
+      <div className="p-4 md:p-10 max-w-5xl mx-auto">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
+          <p className="text-xs text-red-600 font-bold">
+            Gagal memuat data: {error}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-[#0D241F] text-white rounded-xl text-xs font-bold border-none cursor-pointer hover:bg-emerald-950 transition"
+          >
+            Coba Lagi
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading || roleLoading) {
     return (
@@ -295,9 +317,7 @@ export default function BuyerOrdersPage() {
                         ) : (
                           <button
                             onClick={() =>
-                              alert(
-                                `Status pesanan saat ini: ${order.current_status}`,
-                              )
+                              toast(`Status pesanan: ${order.current_status}`)
                             }
                             className="w-full sm:w-auto px-5 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-xs hover:bg-slate-50 transition cursor-pointer shadow-3xs"
                           >

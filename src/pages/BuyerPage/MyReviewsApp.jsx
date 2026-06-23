@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useRole } from "../../hooks/useRole";
+import toast from "react-hot-toast";
 
 export default function MyReviewsApp() {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ export default function MyReviewsApp() {
   // State untuk data list ulasan
   const [myReviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // State untuk form input ulasan baru
   const [rating, setRating] = useState(5);
@@ -35,6 +37,8 @@ export default function MyReviewsApp() {
       setReviews(data || []);
     } catch (err) {
       console.error("Gagal memuat ulasan personal:", err.message);
+      setError(err.message);
+      toast.error("Gagal memuat ulasan");
     } finally {
       setLoading(false);
     }
@@ -50,7 +54,7 @@ export default function MyReviewsApp() {
   const handleSubmitReview = async (e) => {
     e.preventDefault();
     if (!comment.trim()) {
-      alert("Harap isi komentar feedback Anda.");
+      toast.error("Harap isi komentar feedback Anda.");
       return;
     }
 
@@ -71,7 +75,7 @@ export default function MyReviewsApp() {
 
       if (error) throw error;
 
-      alert("Ulasan Anda berhasil disimpan ke database Seapedia!");
+      toast.success("Ulasan Anda berhasil disimpan!");
       setComment("");
 
       // Masukkan data baru ke state agar UI langsung ter-update secara real-time
@@ -79,11 +83,22 @@ export default function MyReviewsApp() {
         setReviews((prev) => [data, ...prev]);
       }
     } catch (err) {
-      alert(`Gagal mengirim ulasan: ${err.message}`);
+      toast.error(`Gagal mengirim ulasan: ${err.message}`);
     } finally {
       setSubmitLoading(false);
     }
   };
+
+  if (error) {
+    return (
+      <div className="p-4 md:p-10 max-w-5xl mx-auto">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
+          <p className="text-xs text-red-600 font-bold">Gagal memuat ulasan: {error}</p>
+          <button onClick={() => fetchMyReviews()} className="mt-4 px-4 py-2 bg-[#0D241F] text-white rounded-xl text-xs font-bold border-none cursor-pointer hover:bg-emerald-950 transition">Coba Lagi</button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading || roleLoading) {
     return (

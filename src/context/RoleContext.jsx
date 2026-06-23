@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { RoleContext } from "./RoleContextBase"; // Import dari file base
+import toast from "react-hot-toast";
 
 export const RoleProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -60,6 +61,7 @@ export const RoleProvider = ({ children }) => {
       }
     } catch (err) {
       console.error("Gagal mengambil role user:", err.message);
+      toast.error("Gagal memuat data pengguna");
     } finally {
       setLoading(false);
     }

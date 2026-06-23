@@ -1,6 +1,7 @@
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useRole } from "../../hooks/useRole";
+import toast from "react-hot-toast";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ export default function AdminLayout() {
       if (error) throw error;
       navigate("/");
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 

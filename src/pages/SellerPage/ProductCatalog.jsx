@@ -2,6 +2,7 @@
 import { useState, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import toast from "react-hot-toast";
 
 export default function ProductCatalog() {
   const { products, store, fetchSellerData, user } = useOutletContext();
@@ -50,7 +51,7 @@ export default function ProductCatalog() {
     if (!store?.id) return;
 
     if (!isEditing && (!file1 || !file2 || !file3)) {
-      alert("Gagal menyimpan! Anda wajib memilih minimal 3 file foto produk.");
+      toast.error("Anda wajib memilih minimal 3 file foto produk.");
       return;
     }
 
@@ -93,18 +94,18 @@ export default function ProductCatalog() {
           .eq("id", currentProductId);
 
         if (error) throw error;
-        alert("Produk berhasil diperbarui di katalog!");
+        toast.success("Produk berhasil diperbarui!");
       } else {
         const { error } = await supabase.from("products").insert([payload]);
         if (error) throw error;
-        alert("Produk baru berhasil ditambahkan!");
+        toast.success("Produk baru berhasil ditambahkan!");
       }
 
       closeAndResetForm();
       fetchSellerData();
     } catch (err) {
       console.error("Save Error:", err.message);
-      alert("Error: " + err.message);
+      toast.error("Error: " + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -147,13 +148,12 @@ export default function ProductCatalog() {
         .delete()
         .eq("id", productId);
       if (error) throw error;
-      alert("Produk berhasil dihapus.");
+      toast.success("Produk berhasil dihapus.");
       fetchSellerData();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
-      // eslint-disable-next-line no-undef
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 

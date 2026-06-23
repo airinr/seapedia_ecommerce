@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+import ErrorBoundary from "./components/ErrorBoundary";
 import LandingPage from "./pages/LandingPage";
 import Register from "./pages/RegisterPage";
 import RoleSelection from "./pages/RoleSelection";
@@ -35,6 +36,7 @@ import MyReviewsApp from "./pages/BuyerPage/MyReviewsApp";
 export default function App() {
   return (
     <Router>
+      <ErrorBoundary>
       <Routes>
         {/* Jalur Utama: Landing Page SEAPEDIA */}
         <Route path="/" element={<LandingPage />} />
@@ -87,6 +89,7 @@ export default function App() {
         {/* Fallback otomatis jika user mengetik alamat asal: lempar kembali ke Landing Page */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </ErrorBoundary>
     </Router>
   );
 }

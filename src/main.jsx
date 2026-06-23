@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { Toaster } from "react-hot-toast";
 import App from "./App";
 import { RoleProvider } from "./context/RoleContext"; // 🚀 Import RoleProvider
 import { CartProvider } from "./context/CartContext";
@@ -12,6 +13,16 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <RoleProvider>
       <CartProvider>
         <App />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              fontFamily: "Poppins, sans-serif",
+              fontSize: "14px",
+            },
+          }}
+        />
       </CartProvider>
     </RoleProvider>
   </React.StrictMode>,

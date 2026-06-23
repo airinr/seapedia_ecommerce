@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import toast from "react-hot-toast";
 
 export default function AdminReturns() {
   const [returnedOrders, setReturnedOrders] = useState([]);
@@ -43,6 +44,7 @@ export default function AdminReturns() {
       setReturnedOrders(data || []);
     } catch (err) {
       console.error("Gagal memuat pesanan retur:", err.message);
+      toast.error("Gagal memuat pesanan retur");
     } finally {
       setLoading(false);
     }
@@ -110,10 +112,10 @@ export default function AdminReturns() {
         },
       ]);
 
-      alert("Refund berhasil diproses!");
+      toast.success("Refund berhasil diproses!");
       fetchReturns();
     } catch (err) {
-      alert("Gagal memproses refund: " + err.message);
+      toast.error("Gagal memproses refund: " + err.message);
     } finally {
       setLoading(false);
     }

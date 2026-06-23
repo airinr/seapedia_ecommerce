@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { supabase } from "../../lib/supabaseClient";
+import toast from "react-hot-toast";
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ export default function CartPage() {
   const [selectedPromoId, setSelectedPromoId] = useState("");
   const [appliedPromo, setAppliedPromo] = useState(null);
   const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState(null);
 
   const deliveryRates = {
     Instant: 25000,
@@ -80,6 +82,8 @@ export default function CartPage() {
         }
       } catch (err) {
         console.error("Gagal memuat kampanye promo platform:", err);
+        setPromoError("Gagal memuat promo");
+        toast.error("Gagal memuat promo");
       } finally {
         setPromoLoading(false);
       }
@@ -139,14 +143,15 @@ export default function CartPage() {
 
       setAppliedVoucher(data);
       setVoucherCode("");
-      alert(
+      toast.success(
         `Voucher "${data.code}" senilai Rp ${Number(data.value_amount).toLocaleString()} berhasil dipasang!`,
       );
     } catch (err) {
       setVoucherError(
         "Terjadi hambatan inter koneksi saat memvalidasi voucher.",
       );
-      console.log(err);
+      console.error(err);
+      toast.error("Gagal memvalidasi voucher");
     }
   };
 
@@ -155,7 +160,7 @@ export default function CartPage() {
       setCheckoutLoading(true);
 
       if (isMultiStore) {
-        alert(
+        toast.error(
           "Gagal memproses transaksi: Aturan Single-Store Checkout aktif. Anda hanya dapat melakukan checkout dari satu toko yang sama dalam satu transaksi. Silakan hapus produk dari toko lain terlebih dahulu.",
         );
         return;
@@ -167,7 +172,7 @@ export default function CartPage() {
       } = await supabase.auth.getUser();
 
       if (authError || !authUser) {
-        alert("Silakan login terlebih dahulu untuk melanjutkan checkout.");
+        toast.error("Silakan login terlebih dahulu untuk melanjutkan checkout.");
         navigate("/login");
         return;
       }
@@ -196,7 +201,7 @@ export default function CartPage() {
         "Alamat Pengiriman Utama Pembeli";
 
       if (currentDbBalance < grandTotal) {
-        alert(
+        toast.error(
           `Saldo Dompet Anda tidak mencukupi untuk membayar total tagihan sebesar Rp ${new Intl.NumberFormat("id-ID").format(grandTotal)}.`,
         );
         navigate("/wallet");
@@ -322,10 +327,10 @@ export default function CartPage() {
       ]);
 
       clearCart();
-      alert("Selamat! Checkout berhasil diproses.");
+      toast.success("Selamat! Checkout berhasil diproses.");
       navigate("/");
     } catch (error) {
-      alert(`Gagal memproses checkout: ${error.message}`);
+      toast.error(`Gagal memproses checkout: ${error.message}`);
     } finally {
       setCheckoutLoading(false);
     }
@@ -533,6 +538,11 @@ export default function CartPage() {
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
                     Gunakan Promo Sistem Aktif
                   </label>
+                  {promoError && (
+                    <p className="text-[9px] text-red-400 mt-1 font-bold">
+                      {promoError}
+                    </p>
+                  )}
                   {promoLoading ? (
                     <p className="text-[10px] text-slate-400 animate-pulse">
                       Memasang jaringan kampanye...

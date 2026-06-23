@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useCart } from "../../context/CartContext";
+import toast from "react-hot-toast";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -11,6 +12,7 @@ export default function ProductDetailPage() {
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [mainImage, setMainImage] = useState("");
   const [quantity, setQuantity] = useState(1);
 
@@ -48,6 +50,8 @@ export default function ProductDetailPage() {
         }
       } catch (error) {
         console.error("Gagal memuat detail produk:", error.message);
+        setError(error.message);
+        toast.error("Gagal memuat detail produk");
       } finally {
         setLoading(false);
       }
@@ -74,6 +78,19 @@ export default function ProductDetailPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA]">
         <div className="animate-spin rounded-full h-9 w-9 border-b-2 border-[#0D241F]"></div>
+      </div>
+    );
+  }
+
+  if (error && !product) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAFAFA] text-center p-6">
+        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-400"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <h1 className="text-xl font-black text-red-600">Gagal Memuat Produk</h1>
+        <p className="text-slate-400 text-xs mt-1 max-w-sm mb-6">{error}</p>
+        <button onClick={() => navigate("/")} className="bg-[#0D241F] text-white px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border-none hover:bg-emerald-950 transition cursor-pointer shadow-sm">Kembali ke Beranda</button>
       </div>
     );
   }

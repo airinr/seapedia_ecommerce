@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useRole } from "../hooks/useRole";
+import toast from "react-hot-toast";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -81,6 +82,7 @@ export default function Register() {
       }
     } catch (error) {
       setErrorMsg(error.message || "Terjadi kesalahan saat mendaftar.");
+      toast.error(error.message || "Terjadi kesalahan saat mendaftar.");
     } finally {
       setLoading(false);
     }
@@ -99,6 +101,7 @@ export default function Register() {
       if (error) throw error;
     } catch (error) {
       setErrorMsg(error.message || "Gagal mendaftar menggunakan Google.");
+      toast.error(error.message || "Gagal mendaftar menggunakan Google.");
     }
   };
 

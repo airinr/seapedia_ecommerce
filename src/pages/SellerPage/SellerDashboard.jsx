@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import toast from "react-hot-toast";
 
 export default function SellerDashboard() {
   // eslint-disable-next-line no-unused-vars
@@ -40,6 +41,7 @@ export default function SellerDashboard() {
           "Gagal memuat statistik counter order_returns:",
           err.message,
         );
+        toast.error("Gagal memuat statistik retur");
       }
     }
 
@@ -66,7 +68,7 @@ export default function SellerDashboard() {
           }
         } catch (e) {
           imagePath = trimmed;
-          console.log(e);
+          console.error(e);
         }
       } else {
         imagePath = trimmed;
@@ -98,10 +100,10 @@ export default function SellerDashboard() {
 
       if (error) throw error;
 
-      alert("Profil toko berhasil diperbarui di server Supabase!");
+      toast.success("Profil toko berhasil diperbarui!");
       fetchSellerData();
     } catch (err) {
-      alert(`Gagal memperbarui informasi toko: ${err.message}`);
+      toast.error(`Gagal memperbarui informasi toko: ${err.message}`);
     } finally {
       setActionLoading(false);
     }

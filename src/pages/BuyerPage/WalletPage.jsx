@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "../../hooks/useRole";
 import { supabase } from "../../lib/supabaseClient";
+import toast from "react-hot-toast";
 
 export default function WalletPage() {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ export default function WalletPage() {
   const [topUpAmount, setTopUpAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function fetchWalletData() {
@@ -60,6 +62,8 @@ export default function WalletPage() {
         setTotalExpense(calculatedExpense);
       } catch (error) {
         console.error("Gagal memuat data dompet Supabase:", error.message);
+        setError(error.message);
+        toast.error("Gagal memuat data dompet");
       } finally {
         setDataLoading(false);
       }
@@ -73,7 +77,7 @@ export default function WalletPage() {
     const amount = Number(topUpAmount);
 
     if (!amount || amount <= 0) {
-      alert("Masukkan nominal top-up yang valid.");
+      toast.error("Masukkan nominal top-up yang valid.");
       return;
     }
 
@@ -109,15 +113,33 @@ export default function WalletPage() {
       setTransactions((prev) => [newTx, ...prev]);
       setTopUpAmount("");
 
-      alert(
+      toast.success(
         `Top-up berhasil! Saldo Anda bertambah Rp ${new Intl.NumberFormat("id-ID").format(amount)}`,
       );
     } catch (error) {
-      alert(`Gagal memproses top-up: ${error.message}`);
+      toast.error(`Gagal memproses top-up: ${error.message}`);
     } finally {
       setIsProcessing(false);
     }
   };
+
+  if (error) {
+    return (
+      <div className="p-4 md:p-8 lg:p-10 max-w-6xl mx-auto min-h-screen">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
+          <p className="text-xs text-red-600 font-bold">
+            Gagal memuat data: {error}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-[#0D241F] text-white rounded-xl text-xs font-bold border-none cursor-pointer hover:bg-emerald-950 transition"
+          >
+            Coba Lagi
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (roleLoading || dataLoading) {
     return (
@@ -164,16 +186,17 @@ export default function WalletPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* PANEL KIRI: RINGKASAN SALDO & FORM TOPUP (4 KANTONG GRID) */}
+        {/* PANEL KIRI: RINGKASAN SALDO & FORM TOPUP */}
         <div className="lg:col-span-5 space-y-6">
           {/* CARD 1: SALDO AKTIF */}
           <div className="bg-gradient-to-br from-[#0D241F] via-[#12312A] to-emerald-950 rounded-[28px] p-6 text-white shadow-md relative overflow-hidden group">
             <div className="absolute -top-12 -right-12 w-36 h-32 bg-white/5 rounded-full blur-2xl group-hover:scale-110 transition duration-500"></div>
             <div className="relative z-10">
-              <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-widest bg-white/10 px-2.5 py-1 rounded-full">
+              <span className="text-[10px] font-bold !text-white uppercase tracking-widest bg-white/10 px-2.5 py-1 rounded-full">
                 Active Balance
               </span>
-              <h2 className="text-3xl font-black font-mono tracking-tighter mt-4 mb-6">
+              {/* 🚀 PERBAIKAN MUTLAK: Menggunakan !text-white untuk memaksa warna teks menjadi putih mengabaikan class CSS luar */}
+              <h2 className="text-3xl font-black font-mono tracking-tighter mt-4 mb-6 !text-white">
                 {new Intl.NumberFormat("id-ID", {
                   style: "currency",
                   currency: "IDR",
@@ -182,14 +205,15 @@ export default function WalletPage() {
               </h2>
               <div className="pt-4 border-t border-white/10 flex justify-between items-center text-xs">
                 <div>
-                  <p className="text-[9px] text-emerald-400/80 uppercase tracking-wider font-semibold">
+                  {/* 🚀 PERBAIKAN MUTLAK: Menggunakan !text-white/80 dan !text-white */}
+                  <p className="text-[9px] !text-white/80 uppercase tracking-wider font-semibold">
                     Account Holder
                   </p>
-                  <p className="font-extrabold tracking-tight mt-0.5 max-w-[160px] truncate">
+                  <p className="font-extrabold !text-white tracking-tight mt-0.5 max-w-[160px] truncate">
                     {user.user_metadata?.full_name || "Seapedia Member"}
                   </p>
                 </div>
-                <div className="text-xl bg-white/10 w-9 h-9 rounded-xl flex items-center justify-center backdrop-blur-xs">
+                <div className="text-xl bg-white/10 w-9 h-9 rounded-xl flex items-center justify-center backdrop-blur-xs !text-white">
                   💳
                 </div>
               </div>
@@ -267,7 +291,7 @@ export default function WalletPage() {
           </div>
         </div>
 
-        {/* PANEL KANAN: LIST TRANSKASI (7 KANTONG GRID) */}
+        {/* PANEL KANAN: LIST TRANSKASI */}
         <div className="lg:col-span-7 h-full">
           <div className="bg-white border border-slate-200/60 rounded-[28px] p-6 md:p-7 shadow-3xs h-full flex flex-col">
             <div className="flex justify-between items-center mb-6">

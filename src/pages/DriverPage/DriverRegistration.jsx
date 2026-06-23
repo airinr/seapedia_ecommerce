@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useRole } from "../../hooks/useRole";
+import toast from "react-hot-toast";
 
 export default function DriverRegistration() {
   const navigate = useNavigate();
@@ -68,10 +69,11 @@ export default function DriverRegistration() {
 
       if (setActiveRole) setActiveRole("Driver");
 
-      alert("Pendaftaran Kurir Berhasil! Selamat bertugas di Seapedia.");
+      toast.success("Pendaftaran Kurir Berhasil! Selamat bertugas di Seapedia.");
       navigate("/driver/dashboard");
     } catch (error) {
       setErrorMsg(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }

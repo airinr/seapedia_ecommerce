@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabaseClient";
 import { useRole } from "../hooks/useRole";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import toast from "react-hot-toast";
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ export default function LandingPage() {
   const [products, setProducts] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const [reviewerName, setReviewerName] = useState("");
@@ -50,6 +52,8 @@ export default function LandingPage() {
       setReviews(reviewData || []);
     } catch (error) {
       console.error("Gagal memuat data:", error.message);
+      setError(error.message);
+      toast.error("Gagal memuat data");
     } finally {
       setLoading(false);
     }
@@ -82,7 +86,7 @@ export default function LandingPage() {
       if (error) throw error;
       window.location.reload();
     } catch (error) {
-      alert(`Gagal Logout: ${error.message}`);
+      toast.error(`Gagal Logout: ${error.message}`);
     }
   };
 
@@ -90,7 +94,7 @@ export default function LandingPage() {
   const handleActionWithAuth = (e, callback) => {
     e.stopPropagation();
     if (!user) {
-      alert(
+      toast.error(
         "Silakan masuk ke akun Seapedia terlebih dahulu untuk mulai belanja dan mengakses proses checkout.",
       );
       navigate("/login");
@@ -104,7 +108,7 @@ export default function LandingPage() {
 
     // 🚀 PROTEKSI AKSES: Mengunci form ulasan agar tidak bisa dikirim oleh guest/anonim
     if (!user) {
-      alert(
+      toast.error(
         "Silakan masuk ke akun Seapedia Anda terlebih dahulu untuk mengirimkan feedback.",
       );
       navigate("/login");
@@ -112,7 +116,7 @@ export default function LandingPage() {
     }
 
     if (!reviewerName.trim() || !comment.trim()) {
-      alert("Harap isi nama peninjau dan teks komentar ulasan.");
+      toast.error("Harap isi nama peninjau dan teks komentar ulasan.");
       return;
     }
 
@@ -139,9 +143,9 @@ export default function LandingPage() {
 
       setComment("");
       setRating(5);
-      alert("Ulasan pengalaman Anda berhasil dikirim!");
+      toast.success("Ulasan pengalaman Anda berhasil dikirim!");
     } catch (err) {
-      alert("Gagal mengirim ulasan ke database: " + err.message);
+      toast.error("Gagal mengirim ulasan: " + err.message);
       console.error(err);
     } finally {
       setSubmitLoading(false);
@@ -380,7 +384,13 @@ export default function LandingPage() {
               : "Katalog Eksklusif Seapedia"}
           </h2>
 
-          {loading ? (
+          {error ? (
+            <div className="py-16 text-center bg-red-50 rounded-2xl border border-dashed border-red-200 px-4">
+              <p className="text-xs text-red-600 font-bold max-w-sm mx-auto leading-relaxed">
+                Gagal memuat data: {error}
+              </p>
+            </div>
+          ) : loading ? (
             <div className="flex justify-center py-20">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-700"></div>
             </div>
@@ -513,23 +523,18 @@ export default function LandingPage() {
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
                     App Rating
                   </label>
-                  <div className="flex gap-3 py-1.5 px-3 bg-[#F5F6F6] rounded-xl justify-between items-center border border-transparent focus-within:border-emerald-600/20 focus-within:bg-white transition-all relative">
-                    <div className="flex gap-1 z-10">
+                  <div className="flex py-1.5 px-3 bg-[#F5F6F6] rounded-xl items-center border border-transparent focus-within:border-emerald-600/20 focus-within:bg-white transition-all">
+                    <div className="flex gap-1 flex-1">
                       {[1, 2, 3, 4, 5].map((starValue) => {
                         const isLit = starValue <= (hoverRating || rating);
                         return (
                           <button
                             key={starValue}
                             type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setRating(starValue);
-                            }}
+                            onClick={() => setRating(starValue)}
                             onMouseEnter={() => setHoverRating(starValue)}
                             onMouseLeave={() => setHoverRating(0)}
                             className="bg-transparent border-none p-0.5 cursor-pointer transition-transform duration-100 hover:scale-125 focus:outline-none flex items-center justify-center"
-                            style={{ pointerEvents: "auto" }}
                             title={`${starValue} Bintang`}
                           >
                             <svg
@@ -552,19 +557,20 @@ export default function LandingPage() {
                         );
                       })}
                     </div>
-                    <div className="text-slate-400 flex items-center pr-1 pointer-events-none absolute right-4">
+                    <div className="text-slate-400 flex items-center pl-2">
+                      <span className="text-[10px] font-bold text-slate-400 mr-1 select-none">{hoverRating || rating}/5</span>
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
+                        width="12"
+                        height="12"
                         viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
+                        fill="#FBBF24"
+                        stroke="#D97706"
+                        strokeWidth="1"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       >
-                        <path d="m6 9 6 6 6-6" />
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                       </svg>
                     </div>
                   </div>

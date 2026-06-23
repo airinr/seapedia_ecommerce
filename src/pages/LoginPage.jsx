@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
+import toast from "react-hot-toast";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -34,6 +35,7 @@ export default function LoginPage() {
       navigate("/");
     } catch (error) {
       setErrorMsg(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -52,6 +54,7 @@ export default function LoginPage() {
       if (error) throw error;
     } catch (error) {
       setErrorMsg(error.message);
+      toast.error(error.message);
       setLoading(false);
     }
   };

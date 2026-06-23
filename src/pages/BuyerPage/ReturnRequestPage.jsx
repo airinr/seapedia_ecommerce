@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useRole } from "../../hooks/useRole";
+import toast from "react-hot-toast";
 
 export default function ReturnRequestPage() {
   const { orderId } = useParams();
@@ -10,6 +11,7 @@ export default function ReturnRequestPage() {
   const { user } = useRole();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [reason, setReason] = useState("");
 
@@ -39,6 +41,8 @@ export default function ReturnRequestPage() {
         setOrder(data);
       } catch (err) {
         console.error("Gagal memuat pesanan:", err.message);
+        setError(err.message);
+        toast.error("Gagal memuat data pesanan");
       } finally {
         setLoading(false);
       }
@@ -50,12 +54,12 @@ export default function ReturnRequestPage() {
   const handleSubmitReturn = async (e) => {
     e.preventDefault();
     if (!reason.trim()) {
-      alert("Harap masukkan alasan pengembalian.");
+      toast.error("Harap masukkan alasan pengembalian.");
       return;
     }
 
     if (!user?.id) {
-      alert("Sesi login Anda tidak ditemukan.");
+      toast.error("Sesi login Anda tidak ditemukan.");
       return;
     }
 
@@ -126,14 +130,24 @@ export default function ReturnRequestPage() {
 
       if (historyError) throw historyError;
 
-      alert("Pengajuan pengembalian berhasil dikirim.");
+      toast.success("Pengajuan pengembalian berhasil dikirim.");
       navigate("/orders");
     } catch (err) {
-      alert("Gagal mengajukan pengembalian: " + err.message);
+      toast.error("Gagal mengajukan pengembalian: " + err.message);
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (error && !order) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F9FA]">
+        <h2 className="text-xl font-black text-red-600">Gagal Memuat Pesanan</h2>
+        <p className="text-slate-400 text-xs mt-1 mb-4">{error}</p>
+        <button onClick={() => navigate("/orders")} className="bg-[#0D241F] text-white px-6 py-2.5 rounded-xl text-xs font-bold border-none hover:bg-emerald-950 transition cursor-pointer">Kembali ke Pesanan Saya</button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import toast from "react-hot-toast";
 
 export default function StoreDiscounts() {
   const { store } = useOutletContext();
@@ -34,6 +35,7 @@ export default function StoreDiscounts() {
       }
     } catch (err) {
       console.error("Error fetching vouchers:", err);
+      toast.error("Gagal memuat voucher");
     } finally {
       setLoading(false);
     }
@@ -85,7 +87,7 @@ export default function StoreDiscounts() {
       setShowModal(false);
       resetForm();
     } catch (err) {
-      alert("Gagal membuat voucher: " + err.message);
+      toast.error("Gagal membuat voucher: " + err.message);
     } finally {
       setSubmitLoading(false);
     }
@@ -113,8 +115,8 @@ export default function StoreDiscounts() {
         setVouchers(vouchers.filter((v) => v.id !== id));
       }
     } catch (err) {
-      alert("Gagal menghapus voucher");
-      console.log(err);
+      toast.error("Gagal menghapus voucher");
+      console.error(err);
     }
   };
 

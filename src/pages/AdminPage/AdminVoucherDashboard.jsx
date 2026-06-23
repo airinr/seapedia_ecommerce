@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import toast from "react-hot-toast";
 
 export default function AdminVoucherDashboard() {
   const [vouchers, setVouchers] = useState([]);
@@ -27,6 +28,7 @@ export default function AdminVoucherDashboard() {
       setVouchers(data || []);
     } catch (err) {
       console.error("Gagal memuat data diskon:", err.message);
+      toast.error("Gagal memuat data diskon");
     } finally {
       setLoading(false);
     }
@@ -67,7 +69,7 @@ export default function AdminVoucherDashboard() {
       setShowModal(false);
       resetForm();
     } catch (err) {
-      alert("Gagal membuat: " + err.message);
+      toast.error("Gagal membuat: " + err.message);
     } finally {
       setSubmitLoading(false);
     }
@@ -89,7 +91,7 @@ export default function AdminVoucherDashboard() {
 
       setVouchers(vouchers.filter((v) => v.id !== id));
     } catch (err) {
-      alert("Gagal menghapus data: " + err.message);
+      toast.error("Gagal menghapus data: " + err.message);
     }
   };
 

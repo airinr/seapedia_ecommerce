@@ -1,15 +1,24 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import toast from "react-hot-toast";
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
   const [cartItems, setCartItems] = useState(() => {
-    const savedCart = localStorage.getItem("seapedia_cart");
-    return savedCart ? JSON.parse(savedCart) : [];
+    try {
+      const savedCart = localStorage.getItem("seapedia_cart");
+      return savedCart ? JSON.parse(savedCart) : [];
+    } catch {
+      return [];
+    }
   });
 
   useEffect(() => {
-    localStorage.setItem("seapedia_cart", JSON.stringify(cartItems));
+    try {
+      localStorage.setItem("seapedia_cart", JSON.stringify(cartItems));
+    } catch {
+      // storage quota exceeded, silently ignore
+    }
   }, [cartItems]);
 
   const addToCart = (product) => {
@@ -24,7 +33,7 @@ export function CartProvider({ children }) {
       }
       return [...prevItems, { ...product, quantity: 1 }];
     });
-    alert(`Sukses memasukkan "${product.product_name}" ke keranjang!`);
+    toast.success(`"${product.product_name}" ditambahkan ke keranjang!`);
   };
 
   // 🚀 BARU: Fungsi hapus item dari keranjang

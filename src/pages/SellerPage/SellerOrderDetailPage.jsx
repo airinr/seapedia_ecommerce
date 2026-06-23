@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import toast from "react-hot-toast";
 
 export default function SellerOrderDetailPage() {
   const { id } = useParams();
@@ -68,13 +69,14 @@ export default function SellerOrderDetailPage() {
 
           if (profileError) {
             console.error("Gagal memuat profil pembeli:", profileError.message);
+            toast.error("Gagal memuat profil pembeli");
           } else if (profileData) {
             setBuyerProfile(profileData);
           }
         }
       } catch (err) {
         console.error("Gagal memuat detail pesanan:", err.message);
-        alert(`Gagal memuat detail pesanan: ${err.message}`);
+        toast.error(`Gagal memuat detail pesanan: ${err.message}`);
       } finally {
         setLoading(false);
       }
@@ -106,10 +108,10 @@ export default function SellerOrderDetailPage() {
         },
       ]);
 
-      alert(`Status pesanan berhasil diubah menjadi: ${targetStatus}`);
+      toast.success(`Status pesanan berhasil diubah menjadi: ${targetStatus}`);
       setOrder({ ...order, current_status: targetStatus });
     } catch (err) {
-      alert(`Gagal memperbarui status: ${err.message}`);
+      toast.error(`Gagal memperbarui status: ${err.message}`);
     } finally {
       setActionLoading(false);
     }
@@ -135,7 +137,7 @@ export default function SellerOrderDetailPage() {
           }
         } catch (e) {
           imagePath = trimmed;
-          console.log(e);
+          console.error(e);
         }
       } else {
         imagePath = trimmed;

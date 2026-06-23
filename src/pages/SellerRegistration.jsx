@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useRole } from "../hooks/useRole";
+import toast from "react-hot-toast";
 
 export default function SellerRegistration() {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ export default function SellerRegistration() {
     }
 
     if (ownedRoles?.includes("Seller")) {
-      alert("Anda sudah terdaftar sebagai Seller!");
+      toast.error("Anda sudah terdaftar sebagai Seller!");
       navigate("/seller/dashboard");
       return;
     }
@@ -62,7 +63,7 @@ export default function SellerRegistration() {
         setActiveRole("Seller");
       }
 
-      alert(
+      toast.success(
         "Selamat! Toko Anda berhasil didaftarkan dan peran Anda kini menjadi Seller.",
       );
 
@@ -70,6 +71,7 @@ export default function SellerRegistration() {
       navigate("/seller/dashboard");
     } catch (error) {
       setErrorMsg(error.message || "Terjadi kesalahan saat mendaftarkan toko.");
+      toast.error(error.message || "Terjadi kesalahan saat mendaftarkan toko.");
     } finally {
       setLoading(false);
     }

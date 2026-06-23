@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import toast from "react-hot-toast";
 
 export default function SellerOrdersPage() {
   const navigate = useNavigate();
@@ -38,6 +39,7 @@ export default function SellerOrdersPage() {
           "Gagal memuat dokumen alasan order_returns:",
           err.message,
         );
+        toast.error("Gagal memuat data retur");
       }
     }
 
@@ -63,7 +65,7 @@ export default function SellerOrdersPage() {
           }
         } catch (e) {
           imagePath = trimmed;
-          console.log(e);
+          console.error(e);
         }
       } else {
         imagePath = trimmed;
@@ -97,10 +99,10 @@ export default function SellerOrdersPage() {
         },
       ]);
 
-      alert(`Sukses! Pesanan dialihkan ke status: [${targetStatus}]`);
+      toast.success(`Pesanan dialihkan ke status: [${targetStatus}]`);
       await fetchSellerData();
     } catch (err) {
-      alert(`Gagal memperbarui status: ${err.message}`);
+      toast.error(`Gagal memperbarui status: ${err.message}`);
     } finally {
       setLoadingOrderId(null);
     }
@@ -192,12 +194,12 @@ export default function SellerOrdersPage() {
         ]);
       }
 
-      alert(
-        `Sukses! Status diperbarui menjadi [${newStatus}] ${newStatus === "Disetujui" ? "dan dana berhasil dikembalikan ke saldo dompet pembeli." : ""}`,
+      toast.success(
+        `Status diperbarui menjadi [${newStatus}] ${newStatus === "Disetujui" ? "dan dana berhasil dikembalikan ke saldo dompet pembeli." : ""}`,
       );
       await fetchSellerData();
     } catch (err) {
-      alert(`Gagal memproses aksi operasional status retur: ${err.message}`);
+      toast.error(`Gagal memproses aksi: ${err.message}`);
     } finally {
       setUpdatingReturnId(null);
     }

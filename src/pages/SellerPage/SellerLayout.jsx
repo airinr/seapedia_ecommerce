@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useRole } from "../../hooks/useRole";
+import toast from "react-hot-toast";
 
 export default function SellerLayout() {
   const navigate = useNavigate();
@@ -84,6 +85,7 @@ export default function SellerLayout() {
       }
     } catch (err) {
       console.error("Gagal memuat data dasbor seller:", err.message);
+      toast.error("Gagal memuat data dasbor");
     } finally {
       setLoading(false);
     }
@@ -100,7 +102,7 @@ export default function SellerLayout() {
       if (error) throw error;
       navigate("/");
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 

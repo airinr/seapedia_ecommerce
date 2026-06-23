@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useRole } from "../hooks/useRole";
+import toast from "react-hot-toast";
 
 export default function UserSettings() {
   const navigate = useNavigate();
@@ -56,6 +57,7 @@ export default function UserSettings() {
           }
         } catch (err) {
           console.error("Gagal mengambil data profiles:", err.message);
+          toast.error("Gagal memuat data profil");
         }
       }
     }
@@ -114,10 +116,10 @@ export default function UserSettings() {
       if (profileError) throw profileError;
 
       setSuccessMsg("Perubahan profil berhasil disimpan!");
-      alert("Profil dan alamat pengiriman Anda sukses diperbarui!");
+      toast.success("Profil dan alamat pengiriman Anda sukses diperbarui!");
     } catch (error) {
       setErrorMsg(error.message);
-      alert(`Gagal menyimpan: ${error.message}`);
+      toast.error(`Gagal menyimpan: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -137,12 +139,14 @@ export default function UserSettings() {
       if (error) throw error;
       if (setActiveRole) setActiveRole(newRole);
 
-      alert(`Selamat! Peran Anda kini telah diubah menjadi ${newRole}.`);
+      toast.success(
+        `Selamat! Peran Anda kini telah diubah menjadi ${newRole}.`,
+      );
       if (newRole !== "Seller") {
         window.location.reload();
       }
     } catch (error) {
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -256,19 +260,6 @@ export default function UserSettings() {
                       ? "bg-amber-50/40 border-amber-300"
                       : "bg-[#F8F9FA] border-slate-200"
                   }`}
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
-                  Biodata
-                </label>
-                <textarea
-                  rows="2"
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder="Ceritakan latar belakang singkat Anda..."
-                  className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-medium outline-none focus:bg-white focus:border-emerald-600 transition resize-none leading-relaxed"
                 />
               </div>
 

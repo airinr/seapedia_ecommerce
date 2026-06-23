@@ -1,6 +1,7 @@
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useRole } from "../../hooks/useRole";
+import toast from "react-hot-toast";
 
 export default function BuyerLayout() {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ export default function BuyerLayout() {
       if (error) throw error;
       navigate("/");
     } catch (error) {
-      alert(error.message);
+      toast.error(error.message);
     }
   };
 

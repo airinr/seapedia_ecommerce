@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRole } from "../../hooks/useRole";
+import toast from "react-hot-toast";
 
 export default function DriverRevenuePage() {
   const { user } = useRole();
@@ -47,6 +48,7 @@ export default function DriverRevenuePage() {
       }
     } catch (err) {
       console.error("Gagal memuat pendapatan driver:", err.message);
+      toast.error("Gagal memuat pendapatan");
     } finally {
       setLoading(false);
     }
