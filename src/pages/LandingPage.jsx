@@ -17,11 +17,12 @@ export default function LandingPage() {
 
   const [reviewerName, setReviewerName] = useState("");
   const [rating, setRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  // Menentukan apakah menu belanja (Dompet, Pesanan, Keranjang) boleh ditampilkan atau tidak
-  const showShoppingMenus = !user || activeRole === "Buyer";
+  // Menu belanja (Dompet, Pesanan, Keranjang) HANYA muncul jika user SUDAH login dan berperan sebagai Buyer
+  const showShoppingMenus = user && activeRole === "Buyer";
 
   const fetchLandingData = async (query = "") => {
     try {
@@ -46,12 +47,7 @@ export default function LandingPage() {
         .order("created_at", { ascending: false });
 
       if (reviewError) throw reviewError;
-
-      const localReviewsKey = "seapedia_local_reviews";
-      const savedLocalStr = localStorage.getItem(localReviewsKey);
-      const localReviews = savedLocalStr ? JSON.parse(savedLocalStr) : [];
-
-      setReviews([...localReviews, ...(reviewData || [])]);
+      setReviews(reviewData || []);
     } catch (error) {
       console.error("Gagal memuat data:", error.message);
     } finally {
@@ -90,8 +86,31 @@ export default function LandingPage() {
     }
   };
 
+  // 🚀 PROTEKSI AKSES: Mengunci tombol beli produk agar user wajib masuk terlebih dahulu
+  const handleActionWithAuth = (e, callback) => {
+    e.stopPropagation();
+    if (!user) {
+      alert(
+        "Silakan masuk ke akun Seapedia terlebih dahulu untuk mulai belanja dan mengakses proses checkout.",
+      );
+      navigate("/login");
+      return;
+    }
+    callback();
+  };
+
   const handleSubmitReview = async (e) => {
     e.preventDefault();
+
+    // 🚀 PROTEKSI AKSES: Mengunci form ulasan agar tidak bisa dikirim oleh guest/anonim
+    if (!user) {
+      alert(
+        "Silakan masuk ke akun Seapedia Anda terlebih dahulu untuk mengirimkan feedback.",
+      );
+      navigate("/login");
+      return;
+    }
+
     if (!reviewerName.trim() || !comment.trim()) {
       alert("Harap isi nama peninjau dan teks komentar ulasan.");
       return;
@@ -112,28 +131,17 @@ export default function LandingPage() {
         .select()
         .single();
 
-      if (insertError) {
-        const fallbackReview = {
-          id: `LOCAL-${Date.now()}`,
-          created_at: new Date().toISOString(),
-          ...newReviewItem,
-        };
+      if (insertError) throw insertError;
 
-        const localReviewsKey = "seapedia_local_reviews";
-        const currentLocalStr = localStorage.getItem(localReviewsKey);
-        const currentLocal = currentLocalStr ? JSON.parse(currentLocalStr) : [];
-
-        currentLocal.unshift(fallbackReview);
-        localStorage.setItem(localReviewsKey, JSON.stringify(currentLocal));
-
-        setReviews((prev) => [fallbackReview, ...prev]);
-      } else if (insertedData) {
+      if (insertedData) {
         setReviews((prev) => [insertedData, ...prev]);
       }
 
       setComment("");
+      setRating(5);
       alert("Ulasan pengalaman Anda berhasil dikirim!");
     } catch (err) {
+      alert("Gagal mengirim ulasan ke database: " + err.message);
       console.error(err);
     } finally {
       setSubmitLoading(false);
@@ -230,7 +238,6 @@ export default function LandingPage() {
                       "U"}
                   </button>
 
-                  {/* 🚀 PERBAIKAN: Menu Dompet & Pesanan dibungkus pengondisian khusus Buyer */}
                   {showShoppingMenus && (
                     <>
                       <div
@@ -308,8 +315,6 @@ export default function LandingPage() {
                 </div>
               )}
 
-              {/* KERANJANG BELANJA */}
-              {/* 🚀 PERBAIKAN: Menu Keranjang Belanja dibungkus pengondisian khusus Buyer */}
               {showShoppingMenus && (
                 <div
                   onClick={() => navigate("/cart")}
@@ -441,28 +446,29 @@ export default function LandingPage() {
                       </p>
 
                       <div className="flex items-center gap-1 text-amber-500 text-[10px] mt-2 font-bold flex-1 items-end">
-                        <span>★★★★★</span>
+                        <span className="text-[#FBBF24]">★★★★★</span>
                         <span className="text-slate-400 text-[9px] ml-0.5 font-bold">
                           (4.9)
                         </span>
                       </div>
 
                       <div className="mt-3.5 flex gap-2">
+                        {/* 🚀 PERBAIKAN: Tombol diproteksi agar mengecek status auth login terlebih dahulu */}
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addToCart(product);
-                          }}
+                          onClick={(e) =>
+                            handleActionWithAuth(e, () => addToCart(product))
+                          }
                           className="flex-1 border border-slate-200 hover:border-[#0D241F] hover:bg-[#0D241F] hover:text-white text-slate-700 font-bold text-[10px] px-2 py-2 rounded-xl transition shadow-3xs bg-white cursor-pointer uppercase tracking-wider"
                         >
                           + Keranjang
                         </button>
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addToCart(product, true);
-                            navigate("/cart");
-                          }}
+                          onClick={(e) =>
+                            handleActionWithAuth(e, () => {
+                              addToCart(product, true);
+                              navigate("/cart");
+                            })
+                          }
                           className="flex-1 bg-[#0D241F] hover:bg-emerald-950 text-white font-bold text-[10px] px-2 py-2 rounded-xl transition shadow-xs border-none cursor-pointer uppercase tracking-wider"
                         >
                           Beli
@@ -507,18 +513,60 @@ export default function LandingPage() {
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
                     App Rating
                   </label>
-                  <div className="relative">
-                    <select
-                      value={rating}
-                      onChange={(e) => setRating(Number(e.target.value))}
-                      className="w-full bg-[#F5F6F6] border border-transparent rounded-xl py-2.5 px-3 text-xs outline-none focus:bg-white focus:border-emerald-600/20 transition cursor-pointer font-bold text-slate-700 appearance-none"
-                    >
-                      <option value="5">★★★★★ (5 - Excellent)</option>
-                      <option value="4">★★★★ (4 - Very Good)</option>
-                      <option value="3">★★★ (3 - Good)</option>
-                      <option value="2">★★ (2 - Fair)</option>
-                      <option value="1">★ (1 - Poor)</option>
-                    </select>
+                  <div className="flex gap-3 py-1.5 px-3 bg-[#F5F6F6] rounded-xl justify-between items-center border border-transparent focus-within:border-emerald-600/20 focus-within:bg-white transition-all relative">
+                    <div className="flex gap-1 z-10">
+                      {[1, 2, 3, 4, 5].map((starValue) => {
+                        const isLit = starValue <= (hoverRating || rating);
+                        return (
+                          <button
+                            key={starValue}
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setRating(starValue);
+                            }}
+                            onMouseEnter={() => setHoverRating(starValue)}
+                            onMouseLeave={() => setHoverRating(0)}
+                            className="bg-transparent border-none p-0.5 cursor-pointer transition-transform duration-100 hover:scale-125 focus:outline-none flex items-center justify-center"
+                            style={{ pointerEvents: "auto" }}
+                            title={`${starValue} Bintang`}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              width="20"
+                              height="22"
+                              className="transition-colors duration-150 pointer-events-none"
+                            >
+                              <path
+                                d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
+                                fill={isLit ? "#FBBF24" : "#E2E8F0"}
+                                stroke={isLit ? "#D97706" : "#CBD5E1"}
+                                strokeWidth="1"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="text-slate-400 flex items-center pr-1 pointer-events-none absolute right-4">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
 
@@ -571,7 +619,7 @@ export default function LandingPage() {
                         <span className="text-[10px] font-black text-[#0D241F] uppercase tracking-wider">
                           {review.reviewer_name}
                         </span>
-                        <span className="text-amber-500 text-[9px] font-bold tracking-widest">
+                        <span className="text-[#FBBF24] text-[9px] font-bold tracking-widest">
                           {"★".repeat(review.rating)}
                         </span>
                       </div>

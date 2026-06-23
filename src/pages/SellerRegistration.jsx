@@ -140,23 +140,6 @@ export default function SellerRegistration() {
             />
           </div>
 
-          {/* Checkbox Persetujuan */}
-          <div className="flex items-start gap-3 px-1">
-            <input
-              type="checkbox"
-              required
-              className="mt-1 accent-emerald-600 cursor-pointer"
-            />
-            <p className="text-[11px] text-slate-500 leading-relaxed select-none">
-              Saya menyetujui{" "}
-              <span className="text-emerald-600 font-bold underline cursor-pointer">
-                Syarat & Ketentuan
-              </span>{" "}
-              menjadi Seller di Seapedia dan menjamin keaslian produk yang
-              dijual.
-            </p>
-          </div>
-
           {/* Action Buttons */}
           <div className="grid grid-cols-2 gap-4 pt-4">
             <button

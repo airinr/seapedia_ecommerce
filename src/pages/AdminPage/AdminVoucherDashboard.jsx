@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -5,7 +6,7 @@ export default function AdminVoucherDashboard() {
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [activeTab, setActiveTab] = useState("Voucher"); // "Voucher" or "Promo"
+  const [activeTab, setActiveTab] = useState("Voucher"); // "Voucher" atau "Promo"
 
   const [code, setCode] = useState("");
   const [discount, setDiscount] = useState("");
@@ -13,6 +14,7 @@ export default function AdminVoucherDashboard() {
   const [expiryDate, setExpiryDate] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
 
+  // 🔄 AMBIL DATA: Hanya mengambil data dari basis data Supabase
   const fetchVouchers = async () => {
     try {
       setLoading(true);
@@ -21,26 +23,20 @@ export default function AdminVoucherDashboard() {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) {
-        const localVouchers = JSON.parse(
-          localStorage.getItem("admin_vouchers") || "[]",
-        );
-        setVouchers(localVouchers);
-      } else {
-        setVouchers(data || []);
-      }
+      if (error) throw error;
+      setVouchers(data || []);
     } catch (err) {
-      console.error("Error fetching vouchers:", err);
+      console.error("Gagal memuat data diskon:", err.message);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchVouchers();
   }, []);
 
+  // 🚀 TAMBAH DATA: Murni menyimpan ke Supabase tanpa menulis ke local storage
   const handleCreateVoucher = async (e) => {
     e.preventDefault();
     if (!code || !discount || !usageLimit || !expiryDate) return;
@@ -49,7 +45,7 @@ export default function AdminVoucherDashboard() {
       setSubmitLoading(true);
       const newVoucher = {
         code: code.toUpperCase().trim(),
-        type: activeTab, // Mengisi kolom "type" dengan "Voucher" atau "Promo" sesuai enum asli database
+        type: activeTab,
         value_amount: Number(discount),
         remaining_usage: Number(usageLimit),
         expiry_date: new Date(expiryDate).toISOString(),
@@ -62,16 +58,9 @@ export default function AdminVoucherDashboard() {
         .select()
         .single();
 
-      if (error) {
-        const localVouchers = JSON.parse(
-          localStorage.getItem("admin_vouchers") || "[]",
-        );
-        // eslint-disable-next-line react-hooks/purity
-        const voucherWithId = { ...newVoucher, id: `local_${Date.now()}` };
-        const updatedVouchers = [voucherWithId, ...localVouchers];
-        localStorage.setItem("admin_vouchers", JSON.stringify(updatedVouchers));
-        setVouchers(updatedVouchers);
-      } else {
+      if (error) throw error;
+
+      if (data) {
         setVouchers([data, ...vouchers]);
       }
 
@@ -91,20 +80,16 @@ export default function AdminVoucherDashboard() {
     setExpiryDate("");
   };
 
+  // 🗑️ HAPUS DATA: Murni menghapus dari Supabase tanpa menyentuh local storage
   const deleteVoucher = async (id) => {
-    if (!confirm("Hapus ini?")) return;
+    if (!confirm("Hapus data ini secara permanen dari basis data?")) return;
     try {
       const { error } = await supabase.from("discounts").delete().eq("id", id);
-      if (error) {
-        const updatedVouchers = vouchers.filter((v) => v.id !== id);
-        localStorage.setItem("admin_vouchers", JSON.stringify(updatedVouchers));
-        setVouchers(updatedVouchers);
-      } else {
-        setVouchers(vouchers.filter((v) => v.id !== id));
-      }
+      if (error) throw error;
+
+      setVouchers(vouchers.filter((v) => v.id !== id));
     } catch (err) {
-      alert("Gagal menghapus");
-      console.log(err);
+      alert("Gagal menghapus data: " + err.message);
     }
   };
 
@@ -120,7 +105,8 @@ export default function AdminVoucherDashboard() {
             Manajemen Voucher & Promo
           </h1>
           <p className="text-xs text-slate-400 font-medium">
-            Kontrol penuh voucher platform dan promosi spesial
+            Kontrol penuh voucher platform dan promosi spesial langsung dari
+            database.
           </p>
         </div>
         <button
@@ -145,7 +131,7 @@ export default function AdminVoucherDashboard() {
         </button>
       </div>
 
-      {/* Tabs */}
+      {/* Rantai Tabs Menu */}
       <div className="flex gap-2 border-b border-slate-200 pb-px">
         <button
           onClick={() => setActiveTab("Voucher")}
@@ -169,6 +155,7 @@ export default function AdminVoucherDashboard() {
         </button>
       </div>
 
+      {/* List Rendering Grid */}
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-700"></div>
@@ -179,7 +166,7 @@ export default function AdminVoucherDashboard() {
             Belum ada {activeTab}
           </h3>
           <p className="text-xs text-slate-400 mt-1">
-            Mulai dengan membuat {activeTab} pertama untuk platform
+            Mulai dengan membuat {activeTab} pertama untuk platform.
           </p>
         </div>
       ) : (
@@ -251,7 +238,11 @@ export default function AdminVoucherDashboard() {
                       Berakhir Pada
                     </span>
                     <span className="text-sm font-black text-[#0D241F]">
-                      {new Date(v.expiry_date).toLocaleDateString()}
+                      {new Date(v.expiry_date).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
                     </span>
                   </div>
                 </div>
@@ -261,6 +252,7 @@ export default function AdminVoucherDashboard() {
         </div>
       )}
 
+      {/* Modal Popup Input */}
       {showModal && (
         <div className="fixed inset-0 bg-[#0D241F]/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-xl">
