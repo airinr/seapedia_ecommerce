@@ -7,6 +7,7 @@ Multi-role e-commerce platform built with React + Supabase. Supports four user r
 ## Features
 
 ### Buyer
+
 - Product catalog with search
 - Shopping cart (localStorage-persisted)
 - Checkout with wallet payment
@@ -17,6 +18,7 @@ Multi-role e-commerce platform built with React + Supabase. Supports four user r
 - App reviews & ratings
 
 ### Seller
+
 - Store profile management
 - Product CRUD with image upload
 - Order management (pack, ship, process returns)
@@ -24,11 +26,13 @@ Multi-role e-commerce platform built with React + Supabase. Supports four user r
 - Dashboard with sales statistics
 
 ### Driver
+
 - Normal delivery workflow (pick up → deliver → complete)
 - Return pickup workflow (pick up from buyer → deliver to store)
 - Monthly revenue tracking
 
 ### Admin
+
 - User, store, product, and order monitoring
 - Voucher & promo CRUD
 - Return & refund processing
@@ -39,15 +43,15 @@ Multi-role e-commerce platform built with React + Supabase. Supports four user r
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 19 (with Hooks), Vite |
-| **Styling** | Tailwind CSS (via PostCSS) |
-| **Backend** | Supabase (PostgreSQL, Auth, Storage) |
-| **State** | React Context (RoleContext, CartContext) |
-| **Notifications** | react-hot-toast |
-| **Linting** | ESLint with React plugin |
-| **Package Manager** | npm |
+| Layer               | Technology                               |
+| ------------------- | ---------------------------------------- |
+| **Frontend**        | React 19 (with Hooks), Vite              |
+| **Styling**         | Tailwind CSS (via PostCSS)               |
+| **Backend**         | Supabase (PostgreSQL, Auth, Storage)     |
+| **State**           | React Context (RoleContext, CartContext) |
+| **Notifications**   | react-hot-toast                          |
+| **Linting**         | ESLint with React plugin                 |
+| **Package Manager** | npm                                      |
 
 ---
 
@@ -87,21 +91,21 @@ npm run dev
 
 ### Available Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start Vite dev server (hot reload) |
-| `npm run build` | Production build to `dist/` |
+| Command           | Description                          |
+| ----------------- | ------------------------------------ |
+| `npm run dev`     | Start Vite dev server (hot reload)   |
+| `npm run build`   | Production build to `dist/`          |
 | `npm run preview` | Preview the production build locally |
-| `npm run lint` | Run ESLint across the project |
+| `npm run lint`    | Run ESLint across the project        |
 
 ---
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `VITE_SUPABASE_URL` | Yes | Supabase project URL (from Settings → API) |
-| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key (Settings → API) |
+| Variable                 | Required | Description                                |
+| ------------------------ | -------- | ------------------------------------------ |
+| `VITE_SUPABASE_URL`      | Yes      | Supabase project URL (from Settings → API) |
+| `VITE_SUPABASE_ANON_KEY` | Yes      | Supabase anonymous key (Settings → API)    |
 
 > ⚠️ **Security:** Never commit `.env` to version control. See [SECURITY.md](./SECURITY.md#-c1-exposed-supabase-credentials) for details.
 
@@ -149,12 +153,12 @@ main.jsx
 
 ### Roles
 
-| Role | Description | Routes |
-|------|-------------|--------|
-| `Buyer` | Browse products, cart, checkout, wallet | `/cart`, `/orders`, `/wallet`, `/reviews` |
-| `Seller` | Manage store, products, orders, discounts | `/seller/*` |
-| `Driver` | Manage deliveries, returns, revenue | `/driver/*` |
-| `Admin` | Monitor system, manage vouchers, process returns | `/admin/*` |
+| Role     | Description                                      | Routes                                    |
+| -------- | ------------------------------------------------ | ----------------------------------------- |
+| `Buyer`  | Browse products, cart, checkout, wallet          | `/cart`, `/orders`, `/wallet`, `/reviews` |
+| `Seller` | Manage store, products, orders, discounts        | `/seller/*`                               |
+| `Driver` | Manage deliveries, returns, revenue              | `/driver/*`                               |
+| `Admin`  | Monitor system, manage vouchers, process returns | `/admin/*`                                |
 
 ### Role Exclusivity Logic
 
@@ -165,10 +169,10 @@ main.jsx
 
 ### Registration Flows
 
-| Flow | Page | Key DB Actions |
-|------|------|----------------|
-| Register | `/register` | `auth.signUp()`, auto-assign Buyer role |
-| Become Seller | `/register-seller` | `user_roles.upsert(Seller)`, `stores.insert()` |
+| Flow          | Page               | Key DB Actions                                   |
+| ------------- | ------------------ | ------------------------------------------------ |
+| Register      | `/register`        | `auth.signUp()`, auto-assign Buyer role          |
+| Become Seller | `/register-seller` | `user_roles.upsert(Seller)`, `stores.insert()`   |
 | Become Driver | `/register-driver` | `user_roles.upsert(Driver)`, `profiles.update()` |
 
 ---
@@ -222,18 +226,19 @@ main.jsx
 
 Use these pre-seeded accounts to test each role:
 
-| Role | Email | Password |
-|------|-------|----------|
-| Buyer | buyer@gmail.com | Buyer123! |
-| Seller | seller@gmail.com | Seller123! |
-| Driver | driver@gmail.com | Driver123! |
-| Admin | admin@seapedia.com | Seapedia123! |
+| Role   | Email              | Password     |
+| ------ | ------------------ | ------------ |
+| Buyer  | buyer@gmail.com    | Buyer123!    |
+| Seller | seller@gmail.com   | Seller123!   |
+| Driver | driver@gmail.com   | Driver123!   |
+| Admin  | admin@seapedia.com | Seapedia123! |
 
 > ℹ️ These accounts require corresponding rows in Supabase Auth + `user_roles` + `profiles` tables.
 
 ### What to Test Per Role
 
 **Buyer:**
+
 - Browse products on landing page
 - Search products
 - Add to cart, checkout with wallet
@@ -242,6 +247,7 @@ Use these pre-seeded accounts to test each role:
 - Submit app review
 
 **Seller:**
+
 - Edit store profile
 - Add/edit/delete products
 - View orders, update status to "Menunggu Pengirim"
@@ -249,6 +255,7 @@ Use these pre-seeded accounts to test each role:
 - Create discounts
 
 **Driver:**
+
 - View available orders ("Menunggu Pengirim")
 - Pick up order → deliver → complete
 - View return pickup tab
@@ -256,6 +263,7 @@ Use these pre-seeded accounts to test each role:
 - View monthly revenue
 
 **Admin:**
+
 - View monitoring dashboard (users, stores, products, orders)
 - Manage vouchers & promos
 - Process return refunds
@@ -267,19 +275,19 @@ Use these pre-seeded accounts to test each role:
 
 The project uses 11 Supabase tables:
 
-| Table | Purpose |
-|-------|---------|
-| `profiles` | Extended user profile (wallet, address, vehicle info) |
-| `user_roles` | Role assignments (Buyer / Seller / Driver / Admin) |
-| `stores` | Seller store information |
-| `products` | Product catalog (per store) |
-| `orders` | Order master (status, payment, delivery) |
-| `order_items` | Order line items |
-| `order_status_histories` | Audit trail of status changes |
-| `order_returns` | Return request management |
-| `discounts` | Vouchers & promo codes |
-| `wallet_transactions` | Wallet financial ledger |
-| `app_reviews` | Application feedback & ratings |
+| Table                    | Purpose                                               |
+| ------------------------ | ----------------------------------------------------- |
+| `profiles`               | Extended user profile (wallet, address, vehicle info) |
+| `user_roles`             | Role assignments (Buyer / Seller / Driver / Admin)    |
+| `stores`                 | Seller store information                              |
+| `products`               | Product catalog (per store)                           |
+| `orders`                 | Order master (status, payment, delivery)              |
+| `order_items`            | Order line items                                      |
+| `order_status_histories` | Audit trail of status changes                         |
+| `order_returns`          | Return request management                             |
+| `discounts`              | Vouchers & promo codes                                |
+| `wallet_transactions`    | Wallet financial ledger                               |
+| `app_reviews`            | Application feedback & ratings                        |
 
 For the complete schema with column types and constraints, see [docs/api.yaml](./docs/api.yaml).
 
@@ -294,29 +302,16 @@ This project uses **Supabase client SDK** directly from the frontend (no backend
 
 ### Query Patterns by Feature
 
-| Feature | Operations |
-|---------|-----------|
-| Auth | `signInWithPassword`, `signInWithOAuth`, `signUp`, `signOut`, `getSession` |
-| Products | `products.select`, `products.insert`, `products.update`, `products.delete` |
-| Cart | localStorage-based (no Supabase queries) |
-| Orders | `orders.select`, `orders.insert`, `orders.update`, `order_items.insert` |
-| Returns | `order_returns.select`, `order_returns.insert`, `order_returns.update` |
-| Wallet | `profiles.select/update(wallet_balance)`, `wallet_transactions.insert` |
+| Feature   | Operations                                                                     |
+| --------- | ------------------------------------------------------------------------------ |
+| Auth      | `signInWithPassword`, `signInWithOAuth`, `signUp`, `signOut`, `getSession`     |
+| Products  | `products.select`, `products.insert`, `products.update`, `products.delete`     |
+| Cart      | localStorage-based (no Supabase queries)                                       |
+| Orders    | `orders.select`, `orders.insert`, `orders.update`, `order_items.insert`        |
+| Returns   | `order_returns.select`, `order_returns.insert`, `order_returns.update`         |
+| Wallet    | `profiles.select/update(wallet_balance)`, `wallet_transactions.insert`         |
 | Discounts | `discounts.select`, `discounts.insert`, `discounts.update`, `discounts.delete` |
-| Reviews | `app_reviews.select`, `app_reviews.insert` |
-
----
-
-## Security
-
-See [SECURITY.md](./SECURITY.md) for a full list of known security issues, including:
-
-- 🔴 Exposed Supabase credentials in `.env`
-- 🔴 Non-atomic checkout (potential data loss)
-- 🔴 Missing Row Level Security (RLS) policies
-- 🟡 Unhandled promise rejections
-- 🟡 Silent database error fallback
-- ⚪ setState after unmount anti-pattern
+| Reviews   | `app_reviews.select`, `app_reviews.insert`                                     |
 
 ---
 
