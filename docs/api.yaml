@@ -1,0 +1,929 @@
+openapi: "3.0.3"
+info:
+  title: Seapedia E-Commerce — Supabase Query Reference
+  description: >
+    This document describes the data model and query patterns used by the Seapedia
+    e-commerce application. All queries are executed client-side via the Supabase
+    JavaScript SDK (`@supabase/supabase-js` v2).
+
+    **Note:** There is no traditional REST API backend. The "endpoints" documented
+    here represent the logical data operations performed from the frontend.
+
+    **Base URL:** `https://<project>.supabase.co/rest/v1/`
+    **Auth Header:** `apikey: <anon_key>` or `Authorization: Bearer <jwt>`
+  version: "1.0.0"
+  contact:
+    name: Seapedia Development Team
+
+servers:
+  - url: https://kuemkydndytxahuakrlw.supabase.co/rest/v1
+    description: Supabase REST API (development)
+
+tags:
+  - name: Auth
+    description: Authentication operations (Supabase Auth)
+  - name: Products
+    description: Product catalog (buyer view) & CRUD (seller view)
+  - name: Orders
+    description: Order lifecycle — creation, status updates, history
+  - name: Returns
+    description: Return request management & refund processing
+  - name: Wallet
+    description: Wallet balance & transaction ledger
+  - name: Discounts
+    description: Voucher & promo code management
+  - name: Reviews
+    description: Application feedback & ratings
+  - name: Admin
+    description: Admin monitoring & management
+  - name: Driver
+    description: Driver delivery & revenue operations
+
+components:
+  schemas:
+    # ──────────────────────────────────────
+    # SCHEMAS — Database Tables
+    # ──────────────────────────────────────
+
+    Profile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: References auth.users.id
+        full_name:
+          type: string
+        phone_number:
+          type: string
+          nullable: true
+        delivery_address:
+          type: string
+          nullable: true
+        wallet_balance:
+          type: number
+          default: 0
+          minimum: 0
+        vehicle_type:
+          type: string
+          nullable: true
+        license_plate:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - full_name
+
+    UserRole:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: string
+          format: uuid
+          description: References auth.users.id — unique constraint
+        role:
+          type: string
+          enum: [Buyer, Seller, Driver, Admin]
+      required:
+        - user_id
+        - role
+
+    Store:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          default: gen_random_uuid()
+        owner_id:
+          type: string
+          format: uuid
+          description: References profiles.id — unique constraint
+        store_name:
+          type: string
+          description: Unique store name
+        description:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - owner_id
+        - store_name
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          default: gen_random_uuid()
+        store_id:
+          type: string
+          format: uuid
+        product_name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        price:
+          type: number
+          minimum: 0
+        stock:
+          type: integer
+          minimum: 0
+        image_url:
+          type: array
+          items:
+            type: string
+            format: uri
+          default: []
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - store_id
+        - product_name
+        - price
+        - stock
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          default: gen_random_uuid()
+        buyer_id:
+          type: string
+          format: uuid
+        store_id:
+          type: string
+          format: uuid
+        driver_id:
+          type: string
+          format: uuid
+          nullable: true
+        discount_id:
+          type: string
+          format: uuid
+          nullable: true
+        subtotal:
+          type: number
+        discount_amount:
+          type: number
+          default: 0
+        delivery_fee:
+          type: number
+        tax_amount:
+          type: number
+        final_total:
+          type: number
+        delivery_method:
+          type: string
+          enum: [Regular, Express]
+        delivery_address:
+          type: string
+        current_status:
+          type: string
+          enum:
+            - Sedang Dikemas
+            - Menunggu Pengirim
+            - Sedang Dikirim
+            - Pesanan Selesai
+            - Dikembalikan
+            - Menunggu Pick-up Retur
+            - Retur Sedang Dikirim
+            - Retur Selesai
+            - Menunggu Persetujuan Retur
+            - Retur Disetujui
+            - Retur Ditolak
+          default: Sedang Dikemas
+        created_at:
+          type: string
+          format: date-time
+        overdue_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - buyer_id
+        - store_id
+        - subtotal
+        - delivery_fee
+        - tax_amount
+        - final_total
+        - delivery_method
+        - delivery_address
+        - current_status
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        product_name:
+          type: string
+        price:
+          type: number
+        quantity:
+          type: integer
+          minimum: 1
+      required:
+        - order_id
+        - product_id
+        - product_name
+        - price
+        - quantity
+
+    OrderStatusHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        changed_by:
+          type: string
+          format: uuid
+          nullable: true
+        driver_name:
+          type: string
+          nullable: true
+        driver_phone:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - order_id
+        - status
+
+    OrderReturn:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          default: gen_random_uuid()
+        order_id:
+          type: string
+          format: uuid
+        buyer_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+        proof_image_url:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [Diajukan, Disetujui, Ditolak, Selesai]
+          default: Diajukan
+        refund_amount:
+          type: number
+          default: 0
+        admin_notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - order_id
+        - buyer_id
+        - reason
+
+    Discount:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          default: gen_random_uuid()
+        code:
+          type: string
+          description: Unique discount code
+        type:
+          type: string
+          enum: [Voucher, Promo]
+        value_amount:
+          type: number
+          minimum: 0
+        expiry_date:
+          type: string
+          format: date-time
+        remaining_usage:
+          type: integer
+          nullable: true
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - code
+        - type
+        - value_amount
+        - expiry_date
+
+    WalletTransaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          default: gen_random_uuid()
+        user_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [TOPUP, PAYMENT, REFUND]
+        amount:
+          type: number
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          default: now()
+      required:
+        - user_id
+        - type
+        - amount
+
+    AppReview:
+      type: object
+      properties:
+        id:
+          type: integer
+        reviewer_name:
+          type: string
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - reviewer_name
+        - rating
+        - comment
+
+    # ──────────────────────────────────────
+    # REQUEST / RESPONSE WRAPPERS
+    # ──────────────────────────────────────
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: string
+          nullable: true
+
+paths:
+  # ──────────────────────────────────────
+  # PRODUCTS
+  # ──────────────────────────────────────
+
+  /products:
+    get:
+      tags: [Products]
+      summary: List products (public)
+      description: Fetches all products with optional search. Used on LandingPage.
+      parameters:
+        - name: product_name
+          in: query
+          schema:
+            type: string
+          description: Search by product name (ilike)
+      responses:
+        "200":
+          description: Product list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+
+    post:
+      tags: [Products]
+      summary: Create a product (Seller)
+      description: Insert a new product for the seller's store.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Product"
+      responses:
+        "201":
+          description: Product created
+
+  /products:
+    patch:
+      tags: [Products]
+      summary: Update a product (Seller)
+      description: Edit product fields (price, stock, name, etc.).
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Product ID to update
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Product updated
+
+    delete:
+      tags: [Products]
+      summary: Delete a product (Seller)
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Product deleted
+
+  # ──────────────────────────────────────
+  # ORDERS
+  # ──────────────────────────────────────
+
+  /orders:
+    get:
+      tags: [Orders]
+      summary: List orders
+      description: Fetches orders with different filters per role (buyer, seller, driver).
+      parameters:
+        - name: buyer_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by buyer
+        - name: store_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by store (seller view)
+        - name: driver_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by driver
+        - name: current_status
+          in: query
+          schema:
+            type: string
+          description: Filter by order status
+        - name: id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by order ID (for return order lookup)
+      responses:
+        "200":
+          description: Order list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+
+    post:
+      tags: [Orders]
+      summary: Create order (Checkout)
+      description: Creates a new order with order_items and status history.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                buyer_id:
+                  type: string
+                  format: uuid
+                store_id:
+                  type: string
+                  format: uuid
+                subtotal:
+                  type: number
+                discount_amount:
+                  type: number
+                delivery_fee:
+                  type: number
+                tax_amount:
+                  type: number
+                final_total:
+                  type: number
+                delivery_method:
+                  type: string
+                delivery_address:
+                  type: string
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      product_id:
+                        type: string
+                        format: uuid
+                      product_name:
+                        type: string
+                      price:
+                        type: number
+                      quantity:
+                        type: integer
+      responses:
+        "201":
+          description: Order created
+
+  /orders:
+    patch:
+      tags: [Orders]
+      summary: Update order status
+      description: Updates order status (by seller, driver, admin, or buyer).
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                current_status:
+                  type: string
+                driver_id:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Order status updated
+
+  # ──────────────────────────────────────
+  # ORDER RETURNS
+  # ──────────────────────────────────────
+
+  /order_returns:
+    get:
+      tags: [Returns]
+      summary: List return requests
+      parameters:
+        - name: order_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by order (for return request page)
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [Diajukan, Disetujui, Ditolak, Selesai]
+          description: Filter by return status
+      responses:
+        "200":
+          description: Return request list
+
+    post:
+      tags: [Returns]
+      summary: Submit return request (Buyer)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                order_id:
+                  type: string
+                  format: uuid
+                buyer_id:
+                  type: string
+                  format: uuid
+                reason:
+                  type: string
+                refund_amount:
+                  type: number
+      responses:
+        "201":
+          description: Return request created
+
+    patch:
+      tags: [Returns]
+      summary: Update return status (Seller/Admin/Driver)
+      description: Approve, reject, or complete a return.
+      parameters:
+        - name: order_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [Disetujui, Ditolak, Selesai]
+      responses:
+        "200":
+          description: Return status updated
+
+  # ──────────────────────────────────────
+  # PROFILES / WALLET
+  # ──────────────────────────────────────
+
+  /profiles:
+    get:
+      tags: [Wallet]
+      summary: Fetch user profile
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Profile data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+
+    patch:
+      tags: [Wallet]
+      summary: Update profile (wallet balance, address, phone, etc.)
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Profile updated
+
+  /wallet_transactions:
+    get:
+      tags: [Wallet]
+      summary: List wallet transactions
+      parameters:
+        - name: user_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Transaction history
+
+    post:
+      tags: [Wallet]
+      summary: Record wallet transaction (TOPUP / PAYMENT / REFUND)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WalletTransaction"
+      responses:
+        "201":
+          description: Transaction recorded
+
+  # ──────────────────────────────────────
+  # DISCOUNTS
+  # ──────────────────────────────────────
+
+  /discounts:
+    get:
+      tags: [Discounts]
+      summary: List discounts
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [Voucher, Promo]
+          description: Filter by type
+        - name: code
+          in: query
+          schema:
+            type: string
+          description: Lookup by code (for voucher validation)
+      responses:
+        "200":
+          description: Discount list
+
+    post:
+      tags: [Discounts]
+      summary: Create discount (Admin/Seller)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Discount"
+      responses:
+        "201":
+          description: Discount created
+
+    delete:
+      tags: [Discounts]
+      summary: Delete discount (Admin/Seller)
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Discount deleted
+
+  # ──────────────────────────────────────
+  # APP REVIEWS
+  # ──────────────────────────────────────
+
+  /app_reviews:
+    get:
+      tags: [Reviews]
+      summary: List app reviews
+      responses:
+        "200":
+          description: Review list
+
+    post:
+      tags: [Reviews]
+      summary: Submit app review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppReview"
+      responses:
+        "201":
+          description: Review submitted
+
+  # ──────────────────────────────────────
+  # ORDER STATUS HISTORY
+  # ──────────────────────────────────────
+
+  /order_status_histories:
+    get:
+      tags: [Orders]
+      summary: Fetch status history for an order
+      parameters:
+        - name: order_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Status history entries
+
+    post:
+      tags: [Orders]
+      summary: Insert status history entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderStatusHistory"
+      responses:
+        "201":
+          description: History entry created
+
+  # ──────────────────────────────────────
+  # USER ROLES
+  # ──────────────────────────────────────
+
+  /user_roles:
+    get:
+      tags: [Auth]
+      summary: Fetch user roles
+      parameters:
+        - name: user_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: User role assignments
+
+    post:
+      tags: [Auth]
+      summary: Assign role to user (Seller/Driver registration)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRole"
+      responses:
+        "201":
+          description: Role assigned
+
+  # ──────────────────────────────────────
+  # STORES
+  # ──────────────────────────────────────
+
+  /stores:
+    get:
+      tags: [Products]
+      summary: Fetch store information
+      parameters:
+        - name: owner_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by owner
+      responses:
+        "200":
+          description: Store data
+
+    post:
+      tags: [Products]
+      summary: Create store (Seller registration)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Store"
+      responses:
+        "201":
+          description: Store created
+
+    patch:
+      tags: [Products]
+      summary: Update store profile
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Store updated

@@ -1,0 +1,1066 @@
+{
+  "info": {
+    "name": "Seapedia E-Commerce — Supabase Queries",
+    "description": "Complete collection of Supabase query patterns used by the Seapedia e-commerce app. Import this collection and set your environment variables.\n\n**Environment Variables Needed:**\n- `supabase_url`: Your Supabase project URL (e.g. https://xxxxx.supabase.co)\n- `anon_key`: Your Supabase anon key\n- `auth_token`: JWT bearer token (after login)\n\n**Authentication:**\nFor unauthenticated endpoints, use header: `apikey: {{anon_key}}`\nFor authenticated endpoints, use header: `Authorization: Bearer {{auth_token}}`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Login (Email/Password)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.session?.access_token) {",
+                  "  pm.environment.set('auth_token', jsonData.session.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"buyer@gmail.com\",\n  \"password\": \"Buyer123!\"\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/token?grant_type=password",
+              "host": ["{{supabase_url}}"],
+              "path": ["auth", "v1", "token"],
+              "query": [
+                { "key": "grant_type", "value": "password" }
+              ]
+            },
+            "description": "Authenticate with email/password. Sets `auth_token` environment variable on success.\n\n**Demo Accounts:**\n- buyer@gmail.com / Buyer123!\n- seller@gmail.com / Seller123!\n- driver@gmail.com / Driver123!\n- admin@seapedia.com / Seapedia123!"
+          }
+        },
+        {
+          "name": "Login (Google OAuth)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"google\"\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/authorize?provider=google",
+              "host": ["{{supabase_url}}"],
+              "path": ["auth", "v1", "authorize"],
+              "query": [
+                { "key": "provider", "value": "google" }
+              ]
+            },
+            "description": "Initiates Google OAuth flow. Redirects to the Google consent screen."
+          }
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"Password123!\",\n  \"data\": {\n    \"full_name\": \"New User\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/signup",
+              "host": ["{{supabase_url}}"],
+              "path": ["auth", "v1", "signup"]
+            },
+            "description": "Register a new user account. Auto-assigns Buyer role client-side."
+          }
+        },
+        {
+          "name": "Get Session",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/user",
+              "host": ["{{supabase_url}}"],
+              "path": ["auth", "v1", "user"]
+            },
+            "description": "Get the current authenticated user session."
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 User Roles",
+      "item": [
+        {
+          "name": "Fetch Roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/user_roles?user_id=eq.{{user_id}}",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "user_roles"],
+              "query": [
+                { "key": "user_id", "value": "eq.{{user_id}}" }
+              ]
+            },
+            "description": "Fetch all roles assigned to the current user."
+          }
+        },
+        {
+          "name": "Assign Seller Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=minimal" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"role\": \"Seller\"\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/user_roles?on_conflict=user_id",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "user_roles"],
+              "query": [
+                { "key": "on_conflict", "value": "user_id" }
+              ]
+            },
+            "description": "Upsert Seller role for the user. Uses `onConflict: user_id` which will overwrite the existing role."
+          }
+        },
+        {
+          "name": "Assign Driver Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=minimal" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"role\": \"Driver\"\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/user_roles?on_conflict=user_id",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "user_roles"],
+              "query": [
+                { "key": "on_conflict", "value": "user_id" }
+              ]
+            },
+            "description": "Upsert Driver role for the user."
+          }
+        }
+      ]
+    },
+    {
+      "name": "📦 Products",
+      "item": [
+        {
+          "name": "List All Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/products?select=*&order=created_at.desc",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "products"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            },
+            "description": "Fetch all products (public). Used on LandingPage."
+          }
+        },
+        {
+          "name": "Search Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/products?select=*&product_name=ilike.*search*&order=created_at.desc",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "products"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "product_name", "value": "ilike.*search*" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            },
+            "description": "Search products by name (case-insensitive)."
+          }
+        },
+        {
+          "name": "Get Product Detail (with Store)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/products?id=eq.{{product_id}}&select=*,stores(*)",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "products"],
+              "query": [
+                { "key": "id", "value": "eq.{{product_id}}" },
+                { "key": "select", "value": "*,stores(*)" }
+              ]
+            },
+            "description": "Fetch a single product with its store details (joined)."
+          }
+        },
+        {
+          "name": "Create Product (Seller)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"store_id\": \"{{store_id}}\",\n  \"product_name\": \"New Product\",\n  \"description\": \"Product description\",\n  \"price\": 50000,\n  \"stock\": 10,\n  \"image_url\": []\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/products",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "products"]
+            },
+            "description": "Create a new product (Seller only)."
+          }
+        },
+        {
+          "name": "Update Product (Seller)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 55000,\n  \"stock\": 15\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/products?id=eq.{{product_id}}",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "products"],
+              "query": [
+                { "key": "id", "value": "eq.{{product_id}}" }
+              ]
+            },
+            "description": "Update product fields (Seller only)."
+          }
+        },
+        {
+          "name": "Delete Product (Seller)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/products?id=eq.{{product_id}}",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "products"],
+              "query": [
+                { "key": "id", "value": "eq.{{product_id}}" }
+              ]
+            },
+            "description": "Delete a product (Seller only)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏪 Stores",
+      "item": [
+        {
+          "name": "Get Store by Owner",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/stores?owner_id=eq.{{user_id}}&select=*",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "stores"],
+              "query": [
+                { "key": "owner_id", "value": "eq.{{user_id}}" },
+                { "key": "select", "value": "*" }
+              ]
+            },
+            "description": "Fetch store for the current seller."
+          }
+        },
+        {
+          "name": "Create Store",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"owner_id\": \"{{user_id}}\",\n  \"store_name\": \"Toko Seapedia\",\n  \"description\": \"Toko online terpercaya\",\n  \"address\": \"Jl. Contoh No. 123, Jakarta\"\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/stores",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "stores"]
+            },
+            "description": "Create a store (during seller registration)."
+          }
+        },
+        {
+          "name": "Update Store",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"store_name\": \"Updated Store Name\",\n  \"description\": \"Updated description\"\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/stores?id=eq.{{store_id}}",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "stores"],
+              "query": [
+                { "key": "id", "value": "eq.{{store_id}}" }
+              ]
+            },
+            "description": "Update store profile (Seller only)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛒 Orders",
+      "item": [
+        {
+          "name": "Create Order (Checkout)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"buyer_id\": \"{{user_id}}\",\n  \"store_id\": \"{{store_id}}\",\n  \"subtotal\": 100000,\n  \"discount_amount\": 0,\n  \"delivery_fee\": 15000,\n  \"tax_amount\": 10000,\n  \"final_total\": 125000,\n  \"delivery_method\": \"Regular\",\n  \"delivery_address\": \"Jl. Contoh No. 123, Jakarta\",\n  \"current_status\": \"Sedang Dikemas\"\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/orders",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "orders"]
+            },
+            "description": "Create a new order (during checkout). Note: This is one of several operations in the checkout transaction. Wallet debit and voucher decrement are separate queries."
+          }
+        },
+        {
+          "name": "List Buyer Orders (with Items)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/orders?buyer_id=eq.{{user_id}}&select=*,order_items(*,products(product_name,image_url))&order=created_at.desc",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "orders"],
+              "query": [
+                { "key": "buyer_id", "value": "eq.{{user_id}}" },
+                { "key": "select", "value": "*,order_items(*,products(product_name,image_url))" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            },
+            "description": "Fetch buyer's orders with items and product details."
+          }
+        },
+        {
+          "name": "List Seller Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/orders?store_id=eq.{{store_id}}&select=*,order_items(*,products(product_name,image_url))&order=created_at.desc",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "orders"],
+              "query": [
+                { "key": "store_id", "value": "eq.{{store_id}}" },
+                { "key": "select", "value": "*,order_items(*,products(product_name,image_url))" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            },
+            "description": "Fetch store's orders (Seller view)."
+          }
+        },
+        {
+          "name": "List Driver Orders (Normal)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/orders?select=*,order_items(*,products(product_name,image_url)),stores(store_name,address),profiles:buyer_id(full_name,delivery_address,phone_number)&or=(current_status.eq.Menunggu Pengirim,and(current_status.eq.Sedang Dikirim,driver_id.eq.{{user_id}}))&order=created_at.desc",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "orders"],
+              "query": [
+                { "key": "select", "value": "*,order_items(*,products(product_name,image_url)),stores(store_name,address),profiles:buyer_id(full_name,delivery_address,phone_number)" },
+                { "key": "or", "value": "(current_status.eq.Menunggu Pengirim,and(current_status.eq.Sedang Dikirim,driver_id.eq.{{user_id}}))" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            },
+            "description": "Fetch orders for driver: unassigned (Menunggu Pengirim) + assigned deliveries (Sedang Dikirim)."
+          }
+        },
+        {
+          "name": "List Driver Orders (Retur)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/orders?id=in.({{order_ids}})&select=*,order_items(*,products(product_name,image_url)),stores(store_name,address),profiles:buyer_id(full_name,delivery_address,phone_number)&driver_id=eq.{{user_id}}&order=created_at.desc",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "orders"],
+              "query": [
+                { "key": "id", "value": "in.({{order_ids}})" },
+                { "key": "select", "value": "*,order_items(*,products(product_name,image_url)),stores(store_name,address),profiles:buyer_id(full_name,delivery_address,phone_number)" },
+                { "key": "driver_id", "value": "eq.{{user_id}}" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            },
+            "description": "Fetch orders with approved returns (Driver retur tab). Requires order_ids from order_returns query."
+          }
+        },
+        {
+          "name": "Update Order Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_status\": \"Menunggu Pengirim\"\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/orders?id=eq.{{order_id}}",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "orders"],
+              "query": [
+                { "key": "id", "value": "eq.{{order_id}}" }
+              ]
+            },
+            "description": "Update order status. Also sets driver_id when driver picks up:\n{\"current_status\": \"Sedang Dikirim\", \"driver_id\": \"{{user_id}}\"}"
+          }
+        },
+        {
+          "name": "Get Order Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/orders?id=eq.{{order_id}}&select=*,order_items(*,products(product_name,image_url))",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "orders"],
+              "query": [
+                { "key": "id", "value": "eq.{{order_id}}" },
+                { "key": "select", "value": "*,order_items(*,products(product_name,image_url))" }
+              ]
+            },
+            "description": "Fetch single order with items (for SellerOrderDetailPage / ReturnRequestPage)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 Order Status History",
+      "item": [
+        {
+          "name": "Insert Status History",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": \"{{order_id}}\",\n  \"status\": \"Sedang Dikemas\",\n  \"changed_by\": \"{{user_id}}\",\n  \"driver_name\": \"Driver Name\",\n  \"driver_phone\": \"08123456789\"\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/order_status_histories",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "order_status_histories"]
+            },
+            "description": "Record an order status change in the audit log."
+          }
+        },
+        {
+          "name": "Get Status History",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/order_status_histories?order_id=eq.{{order_id}}&order=created_at.desc",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "order_status_histories"],
+              "query": [
+                { "key": "order_id", "value": "eq.{{order_id}}" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            },
+            "description": "Fetch status history for an order (used for DriverRevenuePage)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔄 Order Returns",
+      "item": [
+        {
+          "name": "Submit Return Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": \"{{order_id}}\",\n  \"buyer_id\": \"{{user_id}}\",\n  \"reason\": \"Barang rusak saat diterima\",\n  \"refund_amount\": 100000,\n  \"status\": \"Diajukan\"\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/order_returns",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "order_returns"]
+            },
+            "description": "Submit a return request (Buyer)."
+          }
+        },
+        {
+          "name": "Get Returns by Order",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/order_returns?order_id=eq.{{order_id}}",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "order_returns"],
+              "query": [
+                { "key": "order_id", "value": "eq.{{order_id}}" }
+              ]
+            },
+            "description": "Fetch return requests for a specific order."
+          }
+        },
+        {
+          "name": "Get Approved Returns",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/order_returns?status=eq.Disetujui&select=order_id,status,reason",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "order_returns"],
+              "query": [
+                { "key": "status", "value": "eq.Disetujui" },
+                { "key": "select", "value": "order_id,status,reason" }
+              ]
+            },
+            "description": "Fetch all approved returns (Driver retur tab uses this to get order IDs)."
+          }
+        },
+        {
+          "name": "Approve/Reject Return (Seller)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Disetujui\",\n  \"admin_notes\": \"Pengembalian disetujui\"\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/order_returns?order_id=eq.{{order_id}}",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "order_returns"],
+              "query": [
+                { "key": "order_id", "value": "eq.{{order_id}}" }
+              ]
+            },
+            "description": "Update return status. Values: Disetujui (approve), Ditolak (reject), Selesai (complete).\n\nWhen approving, also refunds wallet (separate query)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "👛 Wallet & Profiles",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/profiles?id=eq.{{user_id}}&select=*",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "profiles"],
+              "query": [
+                { "key": "id", "value": "eq.{{user_id}}" },
+                { "key": "select", "value": "*" }
+              ]
+            },
+            "description": "Fetch user profile (wallet_balance, address, phone, etc.)."
+          }
+        },
+        {
+          "name": "Update Wallet Balance",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wallet_balance\": 500000\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/profiles?id=eq.{{user_id}}",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "profiles"],
+              "query": [
+                { "key": "id", "value": "eq.{{user_id}}" }
+              ]
+            },
+            "description": "Update wallet balance (top-up or deduction after checkout/refund)."
+          }
+        },
+        {
+          "name": "List Wallet Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/wallet_transactions?user_id=eq.{{user_id}}&order=created_at.desc",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "wallet_transactions"],
+              "query": [
+                { "key": "user_id", "value": "eq.{{user_id}}" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            },
+            "description": "Fetch wallet transaction history."
+          }
+        },
+        {
+          "name": "Insert Wallet Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"type\": \"TOPUP\",\n  \"amount\": 100000,\n  \"description\": \"Top-up via admin\"\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/wallet_transactions",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "wallet_transactions"]
+            },
+            "description": "Record a wallet transaction. Types: TOPUP (deposit), PAYMENT (checkout), REFUND (return)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏷️ Discounts & Vouchers",
+      "item": [
+        {
+          "name": "List Discounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/discounts?order=created_at.desc",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "discounts"],
+              "query": [
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            },
+            "description": "Fetch all discounts (Admin view) or filter by type."
+          }
+        },
+        {
+          "name": "Validate Voucher Code",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/discounts?code=eq.{{voucher_code}}&type=eq.Voucher&select=*",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "discounts"],
+              "query": [
+                { "key": "code", "value": "eq.{{voucher_code}}" },
+                { "key": "type", "value": "eq.Voucher" },
+                { "key": "select", "value": "*" }
+              ]
+            },
+            "description": "Look up a voucher code for validation during checkout."
+          }
+        },
+        {
+          "name": "Decrement Voucher Usage",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"remaining_usage\": 9\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/discounts?id=eq.{{discount_id}}",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "discounts"],
+              "query": [
+                { "key": "id", "value": "eq.{{discount_id}}" }
+              ]
+            },
+            "description": "Decrement remaining_usage after successful voucher redemption."
+          }
+        },
+        {
+          "name": "Create Discount",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"PROMO50\",\n  \"type\": \"Promo\",\n  \"value_amount\": 50000,\n  \"expiry_date\": \"2026-12-31T23:59:59Z\",\n  \"remaining_usage\": 100\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/discounts",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "discounts"]
+            },
+            "description": "Create a new discount (Admin or Seller)."
+          }
+        },
+        {
+          "name": "Delete Discount",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/discounts?id=eq.{{discount_id}}",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "discounts"],
+              "query": [
+                { "key": "id", "value": "eq.{{discount_id}}" }
+              ]
+            },
+            "description": "Delete a discount (Admin or Seller)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "⭐ App Reviews",
+      "item": [
+        {
+          "name": "List All Reviews",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/app_reviews?order=created_at.desc",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "app_reviews"],
+              "query": [
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            },
+            "description": "Fetch all app reviews (public)."
+          }
+        },
+        {
+          "name": "Submit Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewer_name\": \"Budi Santoso\",\n  \"rating\": 5,\n  \"comment\": \"Aplikasi sangat membantu!\"\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/app_reviews",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "app_reviews"]
+            },
+            "description": "Submit a new app review."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔧 Admin",
+      "item": [
+        {
+          "name": "Count All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/profiles?select=id&head=t",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "profiles"],
+              "query": [
+                { "key": "select", "value": "id" },
+                { "key": "head", "value": "t" }
+              ]
+            },
+            "description": "Count total users (Admin monitoring)."
+          }
+        },
+        {
+          "name": "List Users with Roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/profiles?select=*,user_roles(role)&order=created_at.desc",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "profiles"],
+              "query": [
+                { "key": "select", "value": "*,user_roles(role)" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            },
+            "description": "List all user profiles with their roles (Admin monitoring — users tab)."
+          }
+        },
+        {
+          "name": "List All Stores",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/stores?select=*,profiles!owner_id(full_name)&order=created_at.desc",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "stores"],
+              "query": [
+                { "key": "select", "value": "*,profiles!owner_id(full_name)" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            },
+            "description": "List all stores with owner names (Admin monitoring — stores tab)."
+          }
+        },
+        {
+          "name": "List All Products (with Store)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/products?select=*,stores(store_name)&order=created_at.desc",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "products"],
+              "query": [
+                { "key": "select", "value": "*,stores(store_name)" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            },
+            "description": "List all products with store names (Admin monitoring — products tab)."
+          }
+        },
+        {
+          "name": "List Orders (Admin View)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/orders?select=*,order_items(*),profiles:buyer_id(full_name),stores(store_name)&order=created_at.desc",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "orders"],
+              "query": [
+                { "key": "select", "value": "*,order_items(*),profiles:buyer_id(full_name),stores(store_name)" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            },
+            "description": "List all orders with buyer and store info (Admin monitoring — orders tab)."
+          }
+        },
+        {
+          "name": "List Returns (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/order_returns?select=*,orders!inner(order_id,buyer_id,store_id,final_total,current_status),orders.profiles!buyer_id(full_name,wallet_balance)&order=created_at.desc",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "order_returns"],
+              "query": [
+                { "key": "select", "value": "*,orders!inner(order_id,buyer_id,store_id,final_total,current_status),orders.profiles!buyer_id(full_name,wallet_balance)" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            },
+            "description": "Fetch all return requests with order and buyer info (Admin returns page)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚚 Driver Revenue",
+      "item": [
+        {
+          "name": "Get Driver Revenue",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/order_status_histories?status=eq.Sedang Dikirim&order=created_at.desc&select=*,orders!inner(order_id,driver_id,delivery_fee,current_status,created_at)",
+              "host": ["{{supabase_url}}"],
+              "path": ["rest", "v1", "order_status_histories"],
+              "query": [
+                { "key": "status", "value": "eq.Sedang Dikirim" },
+                { "key": "order", "value": "created_at.desc" },
+                { "key": "select", "value": "*,orders!inner(order_id,driver_id,delivery_fee,current_status,created_at)" }
+              ]
+            },
+            "description": "Fetch driver delivery history for revenue calculation. Filters by status history entries with 'Sedang Dikirim'."
+          }
+        }
+      ]
+    }
+  ]
+}
