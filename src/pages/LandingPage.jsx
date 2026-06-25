@@ -455,13 +455,6 @@ export default function LandingPage() {
                           "No description provided for this product catalogue entry."}
                       </p>
 
-                      <div className="flex items-center gap-1 text-amber-500 text-[10px] mt-2 font-bold flex-1 items-end">
-                        <span className="text-[#FBBF24]">★★★★★</span>
-                        <span className="text-slate-400 text-[9px] ml-0.5 font-bold">
-                          (4.9)
-                        </span>
-                      </div>
-
                       <div className="mt-3.5 flex gap-2">
                         {/* 🚀 PERBAIKAN: Tombol diproteksi agar mengecek status auth login terlebih dahulu */}
                         <button
@@ -558,7 +551,9 @@ export default function LandingPage() {
                       })}
                     </div>
                     <div className="text-slate-400 flex items-center pl-2">
-                      <span className="text-[10px] font-bold text-slate-400 mr-1 select-none">{hoverRating || rating}/5</span>
+                      <span className="text-[10px] font-bold text-slate-400 mr-1 select-none">
+                        {hoverRating || rating}/5
+                      </span>
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="12"
