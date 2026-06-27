@@ -31,6 +31,8 @@ export default function CartPage() {
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState(null);
 
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+
   const deliveryRates = {
     Instant: 25000,
     "Next Day": 15000,
@@ -89,6 +91,26 @@ export default function CartPage() {
       }
     }
     fetchPlatformPromos();
+  }, []);
+
+  useEffect(() => {
+    async function fetchAddress() {
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData?.user?.id) return;
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("delivery_address")
+          .eq("id", userData.user.id)
+          .maybeSingle();
+        if (!error && data?.delivery_address) {
+          setDeliveryAddress(data.delivery_address);
+        }
+      } catch (err) {
+        console.error("Gagal memuat alamat:", err);
+      }
+    }
+    fetchAddress();
   }, []);
 
   const handlePromoChange = (e) => {
@@ -195,10 +217,9 @@ export default function CartPage() {
         ? Number(profileData.wallet_balance || 0)
         : 0;
 
-      // 🚀 PERBAIKAN: Ambil alamat dinamis hasil input halaman pengaturan pengguna
+      // 🚀 PERBAIKAN: Ambil alamat dari state (bisa diedit user saat checkout)
       const activeDeliveryAddress =
-        profileData?.delivery_address?.trim() ||
-        "Alamat Pengiriman Utama Pembeli";
+        deliveryAddress.trim() || "Alamat Pengiriman Utama Pembeli";
 
       if (currentDbBalance < grandTotal) {
         toast.error(
@@ -620,9 +641,34 @@ export default function CartPage() {
                     }).format(taxAmount)}
                   </span>
                 </div>
-              </div>
+                </div>
 
-              <div className="flex justify-between items-center mb-6">
+                {/* ALAMAT PENGIRIMAN */}
+                <div className="border-t border-white/10 pt-4 mt-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider opacity-60 mb-2">
+                    Alamat Pengiriman
+                  </p>
+                  <input
+                    type="text"
+                    value={deliveryAddress}
+                    onChange={(e) => setDeliveryAddress(e.target.value)}
+                    placeholder="Masukkan alamat pengiriman"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-3 text-xs font-medium outline-none focus:bg-white/10 focus:border-emerald-500/30 transition text-white placeholder-slate-500"
+                  />
+                  {deliveryAddress.trim() && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(deliveryAddress.trim())}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold text-emerald-400 hover:text-emerald-300 transition"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                      Cek di Google Maps
+                    </a>
+                  )}
+                </div>
+
+                <div className="flex justify-between items-center mb-6">
                 <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">
                   Total Tagihan
                 </span>

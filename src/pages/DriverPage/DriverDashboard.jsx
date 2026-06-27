@@ -292,6 +292,9 @@ export default function DriverDashboard() {
             const isReturnWaiting =
               activeTab === "retur" && !isReturnDelivering;
 
+            const gmaps = (addr) =>
+              `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr || "")}`;
+
             let badgeStyle = "bg-blue-50 text-blue-700 border border-blue-100";
             let statusLabel = order.current_status;
 
@@ -380,11 +383,32 @@ export default function DriverDashboard() {
                             ? order.profiles?.full_name
                             : order.stores?.store_name}
                         </p>
-                        <p className="text-[11px] text-slate-500 font-medium mt-1 leading-relaxed">
-                          {activeTab === "retur"
-                            ? order.profiles?.delivery_address
-                            : order.stores?.address}
-                        </p>
+                        {(() => {
+                          const addr =
+                            activeTab === "retur"
+                              ? order.profiles?.delivery_address
+                              : order.stores?.address;
+                          return addr ? (
+                            <a
+                              href={gmaps(addr)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block cursor-pointer hover:border-blue-300 transition"
+                            >
+                              <p className="text-[11px] text-slate-500 font-medium mt-1 leading-relaxed">
+                                {addr}
+                              </p>
+                              <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold text-blue-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                Buka Google Maps
+                              </span>
+                            </a>
+                          ) : (
+                            <p className="text-[11px] text-slate-500 font-medium mt-1 leading-relaxed">
+                              {addr}
+                            </p>
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -401,11 +425,32 @@ export default function DriverDashboard() {
                             ? order.stores?.store_name
                             : order.profiles?.full_name}
                         </p>
-                        <p className="text-[11px] text-slate-500 font-medium mt-1 leading-relaxed">
-                          {activeTab === "retur"
-                            ? order.stores?.address
-                            : order.profiles?.delivery_address}
-                        </p>
+                        {(() => {
+                          const addr =
+                            activeTab === "retur"
+                              ? order.stores?.address
+                              : order.profiles?.delivery_address;
+                          return addr ? (
+                            <a
+                              href={gmaps(addr)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block cursor-pointer hover:border-emerald-300 transition"
+                            >
+                              <p className="text-[11px] text-slate-500 font-medium mt-1 leading-relaxed">
+                                {addr}
+                              </p>
+                              <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold text-emerald-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                Buka Google Maps
+                              </span>
+                            </a>
+                          ) : (
+                            <p className="text-[11px] text-slate-500 font-medium mt-1 leading-relaxed">
+                              {addr}
+                            </p>
+                          );
+                        })()}
                         {order.profiles?.phone_number && (
                           <p className="text-[11px] text-emerald-800 font-black mt-1.5 font-mono">
                             No. Telp: {order.profiles.phone_number}

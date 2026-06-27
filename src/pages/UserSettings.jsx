@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars */
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
@@ -27,6 +27,21 @@ export default function UserSettings() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [walletBalance, setWalletBalance] = useState(0);
 
+  // State dropdown wilayah (API emsifa)
+  const [provinces, setProvinces] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [selectedProvince, setSelectedProvince] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [detailAddress, setDetailAddress] = useState("");
+  const [loadingAddress, setLoadingAddress] = useState(false);
+
+  const selectedProvinceName = provinces.find((p) => p.id === selectedProvince)?.name || "";
+  const selectedCityName = cities.find((c) => c.id === selectedCity)?.name || "";
+  const selectedDistrictName = districts.find((d) => d.id === selectedDistrict)?.name || "";
+  const fullAddress = [detailAddress, selectedDistrictName, selectedCityName, selectedProvinceName].filter(Boolean).join(", ");
+
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -52,9 +67,16 @@ export default function UserSettings() {
 
           if (profile) {
             setDeliveryAddress(profile.delivery_address || "");
+            setDetailAddress(profile.delivery_address || "");
             setPhoneNumber(profile.phone_number || "");
             setWalletBalance(profile.wallet_balance || 0);
           }
+
+          // Fetch daftar provinsi
+          const provRes = await fetch(
+            "https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json",
+          );
+          setProvinces(await provRes.json());
         } catch (err) {
           console.error("Gagal mengambil data profiles:", err.message);
           toast.error("Gagal memuat data profil");
@@ -75,6 +97,34 @@ export default function UserSettings() {
       navigate("/driver/dashboard");
     }
   }, [activeRole, roleLoading, navigate]);
+
+  useEffect(() => {
+    if (!selectedProvince) return;
+    setLoadingAddress(true);
+    setSelectedCity("");
+    setSelectedDistrict("");
+    setCities([]);
+    setDistricts([]);
+    fetch(
+      `https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${selectedProvince}.json`,
+    )
+      .then((r) => r.json())
+      .then((data) => setCities(data))
+      .finally(() => setLoadingAddress(false));
+  }, [selectedProvince]);
+
+  useEffect(() => {
+    if (!selectedCity) return;
+    setLoadingAddress(true);
+    setSelectedDistrict("");
+    setDistricts([]);
+    fetch(
+      `https://www.emsifa.com/api-wilayah-indonesia/api/districts/${selectedCity}.json`,
+    )
+      .then((r) => r.json())
+      .then((data) => setDistricts(data))
+      .finally(() => setLoadingAddress(false));
+  }, [selectedCity]);
 
   if (roleLoading) {
     return (
@@ -107,7 +157,7 @@ export default function UserSettings() {
         {
           id: user.id,
           full_name: combinedName,
-          delivery_address: deliveryAddress.trim(),
+          delivery_address: fullAddress.trim(),
           phone_number: phoneNumber.trim(),
         },
         { onConflict: "id" },
@@ -155,7 +205,7 @@ export default function UserSettings() {
   return (
     <div className="p-6 md:p-10 max-w-5xl">
       {/* WARNING BANNER JIKA ALAMAT MASIH KOSONG */}
-      {!deliveryAddress.trim() && (
+      {!fullAddress.trim() && (
         <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3 items-center animate-in fade-in slide-in-from-top-4 duration-300">
           <span className="text-xl">⚠️</span>
           <div className="text-xs">
@@ -250,17 +300,83 @@ export default function UserSettings() {
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
                   Alamat Pengiriman (Rumah)
                 </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                  <div className="relative">
+                    <select
+                      value={selectedProvince}
+                      onChange={(e) => setSelectedProvince(e.target.value)}
+                      className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2.5 pl-3 pr-8 text-xs font-medium outline-none focus:bg-white focus:border-emerald-600 transition appearance-none cursor-pointer"
+                    >
+                      <option value="">Pilih Provinsi</option>
+                      {provinces
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                    </select>
+                    <svg className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={selectedCity}
+                      onChange={(e) => setSelectedCity(e.target.value)}
+                      disabled={!selectedProvince || loadingAddress}
+                      className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2.5 pl-3 pr-8 text-xs font-medium outline-none focus:bg-white focus:border-emerald-600 transition appearance-none cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Pilih Kota/Kabupaten</option>
+                      {cities
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                    </select>
+                    <svg className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={selectedDistrict}
+                      onChange={(e) => setSelectedDistrict(e.target.value)}
+                      disabled={!selectedCity || loadingAddress}
+                      className="w-full bg-[#F8F9FA] border border-slate-200 rounded-xl py-2.5 pl-3 pr-8 text-xs font-medium outline-none focus:bg-white focus:border-emerald-600 transition appearance-none cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Pilih Kecamatan</option>
+                      {districts
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name}
+                          </option>
+                        ))}
+                    </select>
+                    <svg className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                </div>
                 <input
                   type="text"
-                  value={deliveryAddress}
-                  onChange={(e) => setDeliveryAddress(e.target.value)}
-                  placeholder="Masukkan alamat lengkap rumah Anda untuk keperluan logistik kurir"
+                  value={detailAddress}
+                  onChange={(e) => setDetailAddress(e.target.value)}
+                  placeholder="Masukkan nama jalan, nomor rumah/gedung, RT/RW, patokan"
                   className={`w-full border rounded-xl py-2.5 px-4 text-xs font-medium outline-none focus:bg-white focus:border-emerald-600 transition ${
-                    !deliveryAddress.trim()
+                    !fullAddress.trim()
                       ? "bg-amber-50/40 border-amber-300"
                       : "bg-[#F8F9FA] border-slate-200"
                   }`}
                 />
+                {fullAddress.trim() && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress.trim())}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-800 transition"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Cek di Google Maps
+                  </a>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
